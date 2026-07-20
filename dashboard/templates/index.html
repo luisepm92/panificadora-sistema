@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Panificadora</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+    <nav class="navbar">
+        <h1>🥐 Panificadora</h1>
+        <ul class="nav-menu">
+            <li><a class="nav-link active" data-section="pedidos"    onclick="activarSeccion('pedidos');    return false;" href="#">📝 Pedidos</a></li>
+            <li><a class="nav-link"        data-section="produccion" onclick="activarSeccion('produccion'); return false;" href="#">📦 Producción</a></li>
+            <li><a class="nav-link"        data-section="despachos"  onclick="activarSeccion('despachos');  return false;" href="#">🚚 Despachos</a></li>
+            <li><a class="nav-link"        data-section="deudas"     onclick="activarSeccion('deudas');     return false;" href="#">💰 Deudas</a></li>
+            <li><a class="nav-link"        data-section="clientes"   onclick="activarSeccion('clientes');   return false;" href="#">👥 Clientes</a></li>
+            <li><a class="nav-link"        data-section="recetas"    onclick="activarSeccion('recetas');    return false;" href="#">📚 Recetas</a></li>
+            <li><a class="nav-link"        data-section="productos"  onclick="activarSeccion('productos');  return false;" href="#">🛒 Productos</a></li>
+            <li><a class="nav-link nav-logout" onclick="logout(); return false;" href="#">🔒 Salir</a></li>
+        </ul>
+    </nav>
+
+    <main class="content">
+
+        <!-- ── PEDIDOS ────────────────────────────────────────────────────── -->
+        <section id="pedidos" class="section active">
+            <h2>📝 Pedidos Pendientes</h2>
+            <div class="toolbar">
+                <button onclick="abrirModalNuevoPedido()">➕ Nuevo Pedido</button>
+            </div>
+            <table id="pedidos-table">
+                <thead>
+                    <tr>
+                        <th>Recibo</th><th>Cliente</th><th>Monto</th><th>Fecha</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <!-- ── PRODUCCIÓN ─────────────────────────────────────────────────── -->
+        <section id="produccion" class="section">
+            <h2>📦 Producción</h2>
+            <div class="toolbar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <label>Fecha: <input type="date" id="prod-fecha" onchange="cargarProduccion()"></label>
+                <button id="btn-estado-prod" onclick="ciclarEstadoProduccion()"
+                    style="padding:7px 16px;font-size:13px;font-weight:bold;border:none;border-radius:6px;cursor:pointer;display:none">
+                </button>
+                <button onclick="imprimirProduccionPorMasa(document.getElementById('prod-fecha').value)" style="background:#667eea;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Por masa</button>
+                <button onclick="verTopingsProduccion(document.getElementById('prod-fecha').value)" style="background:#28a745;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px">🌿 Topings</button>
+                <button onclick="imprimirProduccionPorCliente(document.getElementById('prod-fecha').value)" style="background:#fd7e14;color:#fff;border:none;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Por cliente</button>
+            </div>
+            <div class="inner-tabs">
+                <button class="tab-btn active" onclick="switchProdTab('prod-pan', this)">🍞 Por pan</button>
+                <button class="tab-btn"        onclick="switchProdTab('prod-ing', this)">🧂 Ingredientes</button>
+            </div>
+            <div id="prod-pan" class="prod-panel"><p class="loading">Cargando...</p></div>
+            <div id="prod-ing" class="prod-panel hidden"></div>
+        </section>
+
+        <!-- ── DESPACHOS ──────────────────────────────────────────────────── -->
+        <section id="despachos" class="section">
+            <h2>🚚 Despachos</h2>
+            <table id="despachos-table">
+                <thead>
+                    <tr>
+                        <th>Recibo</th><th>Cliente</th><th>Monto</th><th>Fecha Despacho</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <!-- ── DEUDAS ─────────────────────────────────────────────────────── -->
+        <section id="deudas" class="section">
+            <h2>💰 Deudas</h2>
+            <div class="toolbar">
+                <input type="text" id="deudas-search" placeholder="Buscar cliente..." oninput="buscarDeudas()">
+                <button onclick="abrirModalDeudaManual()" style="background:#e67e22">➕ Nueva Deuda Manual</button>
+                <button onclick="descargarBackup()" class="btn-secondary" style="padding:8px 14px;border-radius:6px;font-size:14px;border:1px solid #ccc;cursor:pointer">💾 Backup</button>
+            </div>
+            <table id="deudas-table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th><th>Teléfono</th><th>Total Pedidos</th>
+                        <th>Total Pagado</th><th>Deuda</th><th>Ú. Pedido</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div id="deudas-paginacion" class="paginacion"></div>
+        </section>
+
+        <!-- ── CLIENTES ───────────────────────────────────────────────────── -->
+        <section id="clientes" class="section">
+            <h2>👥 Clientes</h2>
+            <div class="toolbar">
+                <button onclick="abrirModalNuevoCliente()">➕ Nuevo Cliente</button>
+                <input type="text" id="clientes-search" placeholder="Buscar cliente..." oninput="filtrarClientes()">
+            </div>
+            <table id="clientes-table">
+                <thead>
+                    <tr>
+                        <th>Nombre / Negocio</th><th>Teléfono</th><th>Contacto</th>
+                        <th>Categoría</th><th>Estado</th><th>Pedidos</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <!-- ── PRODUCTOS ─────────────────────────────────────────────────── -->
+        <section id="productos" class="section">
+            <h2>🛒 Productos</h2>
+            <div class="toolbar">
+                <button onclick="abrirModalNuevoProducto()">➕ Nuevo Producto</button>
+                <input type="text" id="productos-search" placeholder="Buscar producto..." oninput="filtrarProductos()">
+                <label style="margin-left:12px;display:inline-flex;align-items:center;gap:6px;font-size:14px">
+                    <input type="checkbox" id="productos-solo-activos" onchange="cargarProductos()"> Solo activos
+                </label>
+            </div>
+            <table id="productos-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th><th>Tipo Pan</th><th>Peso</th><th>Tipo Masa</th>
+                        <th>Precio (USD)</th><th>Paquete</th><th>Activo</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <h3 style="margin-top:28px">🌿 Topings</h3>
+            <div class="toolbar">
+                <button onclick="abrirModalNuevoToping()">➕ Nuevo Toping</button>
+            </div>
+            <table id="topings-table">
+                <thead><tr><th>Nombre</th><th>Estado</th><th>Acción</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <!-- ── RECETAS ────────────────────────────────────────────────────── -->
+        <section id="recetas" class="section">
+            <h2>📚 Recetas</h2>
+            <div class="toolbar">
+                <button onclick="abrirModalNuevaReceta()">➕ Nueva Receta</button>
+            </div>
+            <table id="recetas-table">
+                <thead>
+                    <tr>
+                        <th>Tipo de Masa</th><th>Descripción</th>
+                        <th>Ingredientes</th><th>Activo</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+    </main>
+</div>
+
+<!-- ── MODAL: Nuevo / Editar Pedido (wizard) ─────────────────────────────── -->
+<div id="modal-pedido" class="modal hidden">
+    <div class="modal-content">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 id="modal-pedido-titulo" style="margin:0">Nuevo Pedido</h3>
+            <button class="btn-secondary" style="padding:4px 10px" onclick="cerrarModal('modal-pedido')">✕</button>
+        </div>
+
+        <!-- PASO 1: Cliente + Fechas -->
+        <div id="pedido-paso-cliente" class="pedido-paso">
+            <p style="color:#667eea;font-weight:bold;margin-bottom:12px">Paso 1 de 3 — Cliente</p>
+            <label>Buscar cliente <span class="required">*</span>
+                <input type="text" id="pedido-cli-buscar" placeholder="Escribe para filtrar..." style="width:100%;margin-top:4px" oninput="pedidoFiltrarClientes()">
+            </label>
+            <div id="pedido-cli-lista" style="margin-top:6px;max-height:180px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;margin-bottom:14px"></div>
+            <div id="pedido-cli-seleccionado" style="display:none;background:#f0f4ff;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:14px"></div>
+            <input type="hidden" id="pedido-cliente-id">
+            <div class="modal-actions" style="margin-top:20px">
+                <button onclick="pedidoPaso2()">Siguiente →</button>
+                <button class="btn-secondary" onclick="cerrarModal('modal-pedido')">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- PASO 2: Seleccionar producto -->
+        <div id="pedido-paso-producto" class="pedido-paso hidden">
+            <p style="color:#667eea;font-weight:bold;margin-bottom:12px">Paso 2 de 3 — Seleccionar producto</p>
+            <div id="pedido-carrito-mini" style="display:none;background:#f8f9fa;border-radius:6px;padding:10px;margin-bottom:12px;font-size:13px"></div>
+            <label>Buscar producto
+                <input type="text" id="pedido-prod-buscar" placeholder="Escribe para filtrar..." style="width:100%;margin-top:4px" oninput="pedidoFiltrarProductos()">
+            </label>
+            <div id="pedido-prod-lista" style="margin-top:10px;max-height:240px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px"></div>
+            <div class="modal-actions" style="margin-top:16px">
+                <button class="btn-secondary" onclick="pedidoPaso1()">← Volver</button>
+                <button class="btn-secondary" onclick="cerrarModal('modal-pedido')">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- PASO 3: Cantidad -->
+        <div id="pedido-paso-cantidad" class="pedido-paso hidden">
+            <p style="color:#667eea;font-weight:bold;margin-bottom:12px">Paso 3 de 4 — Cantidad</p>
+            <div id="pedido-prod-seleccionado" style="background:#f0f4ff;border-radius:8px;padding:14px;margin-bottom:16px;font-size:15px"></div>
+            <label id="pedido-cantidad-label">¿Cuántas unidades? <span class="required">*</span>
+                <input type="number" id="pedido-cantidad" min="1" placeholder="Ej: 5" style="width:100%;font-size:18px;margin-top:4px"
+                    onkeydown="if(event.key==='Enter') pedidoPaso4Toping()">
+            </label>
+            <div id="pedido-subtotal-preview" style="text-align:right;font-size:15px;font-weight:bold;margin-top:8px;color:#2C3E50"></div>
+            <div class="modal-actions" style="margin-top:20px">
+                <button onclick="pedidoPaso4Toping()">Siguiente → Toping</button>
+                <button class="btn-secondary" onclick="pedidoPaso2()">← Cambiar producto</button>
+            </div>
+        </div>
+
+        <!-- PASO 4: TOPING -->
+        <div id="pedido-paso-toping" class="pedido-paso hidden">
+            <p style="color:#667eea;font-weight:bold;margin-bottom:12px">Paso 4 de 4 — Toping</p>
+            <div id="pedido-toping-prod" style="background:#f0f4ff;border-radius:8px;padding:10px;margin-bottom:14px;font-size:14px"></div>
+            <div id="pedido-topings-lista" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px"></div>
+            <div class="modal-actions" style="margin-top:16px">
+                <button class="btn-secondary" onclick="pedidoPaso3()">← Cambiar cantidad</button>
+            </div>
+        </div>
+
+        <!-- RESUMEN (carrito) -->
+        <div id="pedido-paso-resumen" class="pedido-paso hidden">
+            <p style="color:#28a745;font-weight:bold;margin-bottom:12px">🛒 Resumen del pedido</p>
+            <div id="pedido-resumen-lista" style="margin-bottom:12px"></div>
+            <div style="text-align:right;font-size:18px;font-weight:bold;color:#2C3E50;margin-bottom:16px">
+                TOTAL: <span id="pedido-total-final">$0.00</span>
+            </div>
+            <div class="modal-actions">
+                <button onclick="pedidoAgregarOtro()">➕ Agregar otro producto</button>
+                <button onclick="guardarPedidoManual()" style="background:#28a745">💾 Guardar Pedido</button>
+            </div>
+            <div style="margin-top:10px;text-align:center">
+                <button class="btn-secondary" style="font-size:12px" onclick="cerrarModal('modal-pedido')">Cancelar todo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Confirmar Pedido ───────────────────────────────────────────── -->
+<div id="modal-confirmar" class="modal hidden">
+    <div class="modal-content">
+        <h3>Confirmar Pedido</h3>
+        <label>Fecha Producción: <input type="date" id="fecha-produccion"></label>
+        <label>Fecha Despacho:   <input type="date" id="fecha-despacho"></label>
+        <div class="modal-actions">
+            <button onclick="confirmarPedido()">✅ Confirmar</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-confirmar')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Cambiar Fecha Despacho ─────────────────────────────────────── -->
+<div id="modal-despacho" class="modal hidden">
+    <div class="modal-content">
+        <h3>Cambiar Fecha Despacho</h3>
+        <label>Nueva Fecha: <input type="date" id="nueva-fecha-despacho"></label>
+        <div class="modal-actions">
+            <button onclick="cambiarDespacho()">✅ Cambiar</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-despacho')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Generar Recibo PDF ─────────────────────────────────────────── -->
+<div id="modal-recibo" class="modal hidden">
+    <div class="modal-content">
+        <h3>Generar Recibo PDF</h3>
+        <label>Delivery ($): <input type="number" id="recibo-delivery" value="0" min="0" step="0.01"></label>
+        <label class="checkbox-label">
+            <input type="checkbox" id="recibo-iva"> Aplica IVA (16%)
+        </label>
+        <div class="modal-actions">
+            <button onclick="generarRecibo()">📄 Descargar PDF</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-recibo')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Nueva / Editar Receta ──────────────────────────────────────── -->
+<div id="modal-receta" class="modal hidden">
+    <div class="modal-content">
+        <h3 id="modal-receta-titulo">Nueva Receta</h3>
+        <label>Nombre de la masa:
+            <input type="text" id="receta-nombre" placeholder="Ej: INTEGRAL" style="text-transform:uppercase">
+        </label>
+        <label>Descripción:
+            <input type="text" id="receta-descripcion" placeholder="Opcional">
+        </label>
+        <div class="modal-actions">
+            <button onclick="guardarReceta()">💾 Guardar</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-receta')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Detalle Receta (ingredientes) ───────────────────────────────── -->
+<div id="modal-detalle-receta" class="modal hidden">
+    <div class="modal-content modal-wide">
+        <div class="modal-header">
+            <h3 id="detalle-receta-titulo">Receta: —</h3>
+        </div>
+        <div style="margin-bottom:12px">
+            <strong>Impacto en producción futura:</strong>
+            <div id="impact-tabla" style="margin-top:8px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <strong>Ingredientes del batch</strong>
+            <button onclick="abrirModalIngrediente()">➕ Agregar</button>
+        </div>
+        <table id="ingredientes-table">
+            <thead>
+                <tr>
+                    <th>Ingrediente</th>
+                    <th style="text-align:center">Gramos en batch</th>
+                    <th style="text-align:center">Ratio (kg/kg masa)</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;align-items:center;
+                    padding:10px 14px;background:#f0f4ff;border-radius:6px;margin-top:8px;font-size:14px">
+            <span>⚖️ Peso total del batch:</span>
+            <strong id="receta-total-g" style="font-size:16px;color:#667eea">— g</strong>
+        </div>
+        <div class="modal-actions" style="margin-top:16px">
+            <button onclick="guardarTodaReceta()" style="background:#28a745">💾 Guardar cambios</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-detalle-receta')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Agregar / Editar Ingrediente ───────────────────────────────── -->
+<div id="modal-ingrediente" class="modal hidden">
+    <div class="modal-content">
+        <h3 id="modal-ingrediente-titulo">Agregar Ingrediente</h3>
+        <label>Ingrediente:
+            <input type="text" id="ing-nombre" placeholder="Ej: Harina de trigo">
+        </label>
+        <label>Gramos en el batch:
+            <input type="number" id="ing-cantidad" placeholder="Ej: 1000" min="0" step="1">
+        </label>
+        <div class="modal-actions">
+            <button onclick="guardarIngrediente()">💾 Guardar</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-ingrediente')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Ingredientes Detallados por Masa ────────────────────────────── -->
+<div id="modal-ing-detalle" class="modal hidden">
+    <div class="modal-content modal-wide">
+        <div class="modal-header">
+            <h3 id="ing-detalle-titulo">Ingredientes — Masa</h3>
+            <button class="btn-secondary" style="padding:4px 10px" onclick="cerrarModal('modal-ing-detalle')">✕</button>
+        </div>
+
+        <div id="ing-detalle-panes" style="margin-bottom:16px;padding:10px;background:#f0f4ff;border-radius:6px;font-size:14px"></div>
+
+        <table id="ing-detalle-table">
+            <thead>
+                <tr><th>Ingrediente</th><th style="text-align:right">Cantidad (g)</th></tr>
+            </thead>
+            <tbody id="ing-detalle-body">
+                <tr><td colspan="2" class="loading">Cargando...</td></tr>
+            </tbody>
+        </table>
+
+        <div class="modal-actions" style="margin-top:16px">
+            <button onclick="imprimirIngDetalle()" style="background:#667eea">🖨️ Imprimir</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-ing-detalle')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Detalle Deuda + Registrar Pago ──────────────────────────────── -->
+<div id="modal-pago" class="modal hidden">
+    <div class="modal-content modal-wide">
+        <div class="modal-header">
+            <h3 id="modal-pago-titulo">Deudas del cliente</h3>
+            <button class="btn-secondary" style="padding:4px 10px" onclick="cerrarModal('modal-pago')">✕</button>
+        </div>
+        <div id="pago-cliente-info" style="color:#555;margin-bottom:16px;font-size:14px"></div>
+
+        <table id="pago-deudas-table">
+            <thead>
+                <tr>
+                    <th>Concepto</th><th>Fecha</th><th>Total</th><th>Pagado</th><th>Saldo</th><th>Estado</th><th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="pago-deudas-body"></tbody>
+        </table>
+
+        <div id="pago-form" class="hidden" style="margin-top:20px;padding:16px;background:#f8f9fa;border-radius:8px;border-left:4px solid #667eea">
+            <h4 style="margin:0 0 14px;color:#2C3E50">💳 Registrar abono — Recibo <span id="pago-recibo-label" style="color:#667eea"></span></h4>
+
+            <!-- Resumen de la deuda -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+                <div style="background:#fff;border-radius:6px;padding:10px;text-align:center;border:1px solid #dee2e6">
+                    <div style="font-size:11px;color:#888;margin-bottom:4px">TOTAL DEUDA</div>
+                    <div style="font-weight:bold;font-size:16px" id="pago-original-label">—</div>
+                </div>
+                <div style="background:#fff;border-radius:6px;padding:10px;text-align:center;border:1px solid #dee2e6">
+                    <div style="font-size:11px;color:#888;margin-bottom:4px">YA ABONADO</div>
+                    <div style="font-weight:bold;font-size:16px;color:#28a745" id="pago-abonado-label">—</div>
+                </div>
+                <div style="background:#fff;border-radius:6px;padding:10px;text-align:center;border:1px solid #dee2e6">
+                    <div style="font-size:11px;color:#888;margin-bottom:4px">SALDO PENDIENTE</div>
+                    <div style="font-weight:bold;font-size:16px;color:#dc3545" id="pago-saldo-label">—</div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end">
+                <label>Monto del abono ($) <span class="required">*</span>
+                    <div style="display:flex;gap:6px;margin-top:4px">
+                        <input type="number" id="pago-monto" min="0.01" step="0.01" placeholder="0.00"
+                            style="flex:1" oninput="_previsualizarAbono()">
+                        <button type="button" onclick="_pagarTotal()"
+                            style="padding:8px 10px;font-size:12px;background:#6c757d;white-space:nowrap">
+                            Pagar total
+                        </button>
+                    </div>
+                </label>
+                <label>Método de pago
+                    <select id="pago-metodo" style="margin-top:4px">
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </label>
+            </div>
+            <div id="pago-preview-saldo" style="margin-top:10px;font-size:13px;color:#555;min-height:18px"></div>
+            <div class="modal-actions" style="margin-top:14px">
+                <button onclick="confirmarPago()" style="background:#28a745">💾 Registrar Abono</button>
+                <button class="btn-secondary" onclick="cancelarFormPago()">Cancelar</button>
+            </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:16px">
+            <button class="btn-secondary" onclick="cerrarModal('modal-pago')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Nuevo Toping ────────────────────────────────────────────────── -->
+<div id="modal-nuevo-toping" class="modal hidden">
+    <div class="modal-content">
+        <h3>🌿 Nuevo Toping</h3>
+        <label>Nombre <span class="required">*</span>
+            <input type="text" id="toping-nombre" placeholder="Ej: Ajonjolí">
+        </label>
+        <div class="modal-actions" style="margin-top:16px">
+            <button onclick="guardarNuevoToping()">💾 Guardar</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-nuevo-toping')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Nueva Deuda Manual ─────────────────────────────────────────── -->
+<div id="modal-deuda-manual" class="modal hidden">
+    <div class="modal-content">
+        <h3>➕ Nueva Deuda Manual</h3>
+        <label>Cliente <span class="required">*</span>
+            <select id="dm-cliente" style="margin-top:4px">
+                <option value="">— Seleccionar —</option>
+            </select>
+        </label>
+        <label>Concepto / Descripción <span class="required">*</span>
+            <input type="text" id="dm-descripcion" placeholder="Ej: Préstamo, servicio técnico...">
+        </label>
+        <label>Monto ($) <span class="required">*</span>
+            <input type="number" id="dm-monto" min="0.01" step="0.01" placeholder="0.00">
+        </label>
+        <div class="modal-actions" style="margin-top:16px">
+            <button onclick="guardarDeudaManual()" style="background:#e67e22">💾 Registrar Deuda</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-deuda-manual')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Nuevo / Editar Cliente ─────────────────────────────────────────── -->
+<div id="modal-cliente" class="modal hidden">
+    <div class="modal-content">
+        <h3 id="modal-cliente-titulo">Nuevo Cliente</h3>
+        <label>Nombre / Negocio: <span class="required">*</span>
+            <input type="text" id="cli-nombre" placeholder="Ej: LM Market">
+        </label>
+        <label>Teléfono:
+            <input type="text" id="cli-telefono" placeholder="Ej: 04141234567">
+        </label>
+        <label>Dirección:
+            <input type="text" id="cli-direccion" placeholder="Opcional">
+        </label>
+        <label>Contacto principal:
+            <input type="text" id="cli-contacto" placeholder="Nombre del encargado">
+        </label>
+        <label>Categoría:
+            <select id="cli-categoria">
+                <option value="restaurante">Restaurante</option>
+                <option value="cafeteria">Cafetería</option>
+                <option value="market">Market</option>
+                <option value="otro" selected>Otro</option>
+            </select>
+        </label>
+        <label>Telegram ID:
+            <input type="text" id="cli-telegram" placeholder="Opcional">
+        </label>
+        <div class="modal-actions">
+            <button onclick="guardarCliente()">💾 Guardar</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-cliente')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Detalle Cliente ────────────────────────────────────────────── -->
+<div id="modal-detalle-cliente" class="modal hidden">
+    <div class="modal-content modal-wide">
+        <h3 id="detalle-cliente-nombre">—</h3>
+        <div id="detalle-cliente-info" style="margin-bottom:16px;color:#555"></div>
+        <strong>Últimos 10 pedidos:</strong>
+        <table id="detalle-cliente-pedidos" style="margin-top:8px">
+            <thead>
+                <tr>
+                    <th>Recibo</th><th>Estado</th><th>Monto</th><th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="modal-actions" style="margin-top:20px">
+            <button class="btn-secondary" onclick="cerrarModal('modal-detalle-cliente')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Nuevo / Editar Producto ────────────────────────────────────── -->
+<div id="modal-producto" class="modal hidden">
+    <div class="modal-content">
+        <h3 id="modal-producto-titulo">Nuevo Producto</h3>
+        <label>Nombre: <span class="required">*</span>
+            <input type="text" id="prod-nombre" placeholder="Ej: Pan Brioche 90g">
+        </label>
+        <label>Tipo Pan: <span class="required">*</span>
+            <input type="text" id="prod-tipo-pan" placeholder="Ej: BRIOCHE" style="text-transform:uppercase">
+        </label>
+        <label>Peso (g): <span class="required">*</span>
+            <input type="number" id="prod-peso" placeholder="90" min="1">
+        </label>
+        <label>Precio Unitario (USD): <span class="required">*</span>
+            <input type="number" id="prod-precio" placeholder="1.50" min="0" step="0.01">
+        </label>
+        <label>Tipo de Masa:
+            <select id="prod-tipo-masa">
+                <option value="">— Sin asignar —</option>
+            </select>
+        </label>
+        <label>Cantidad por paquete:
+            <input type="number" id="prod-paq-cantidad" placeholder="Ej: 6" min="1">
+        </label>
+        <label>Tipo de paquete:
+            <input type="text" id="prod-paq-tipo" placeholder="Ej: bolsa, caja">
+        </label>
+        <div class="modal-actions">
+            <button onclick="guardarProducto()">💾 Guardar</button>
+            <button class="btn-secondary" onclick="cerrarModal('modal-producto')">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/app.js?v={{ js_version }}"></script>
+</body>
+</html>

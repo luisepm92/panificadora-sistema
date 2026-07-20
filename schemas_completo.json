@@ -1,0 +1,236 @@
+{
+  "proyecto": "Sistema Panificadora",
+  "version": "1.0",
+  "modelo_ia": {
+    "pedidos_simples": "claude-haiku-4-5-20251001",
+    "logica_compleja": "claude-sonnet-4-6"
+  },
+  "descripcion": "Estructura completa de base de datos PostgreSQL para sistema de gestion de pedidos, deudas y produccion",
+
+  "tablas": {
+
+    "usuarios": {
+      "descripcion": "Dueno y empleados del sistema (acceso interno por Telegram)",
+      "campos": {
+        "id_usuario":     { "tipo": "SERIAL", "pk": true },
+        "telegram_id":    { "tipo": "VARCHAR(100)", "unique": true, "not_null": true, "ejemplo": "@luisepm92" },
+        "nombre":         { "tipo": "VARCHAR(200)", "not_null": true },
+        "rol":            { "tipo": "ENUM", "valores": ["DUENO", "EMPLEADO"], "default": "EMPLEADO" },
+        "estado":         { "tipo": "ENUM", "valores": ["activo", "inactivo"], "default": "activo" },
+        "fecha_registro": { "tipo": "TIMESTAMP", "default": "CURRENT_TIMESTAMP" },
+        "ultimo_acceso":  { "tipo": "TIMESTAMP" }
+      },
+      "datos_iniciales": [
+        { "telegram_id": "@luisepm92", "nombre": "Luis (Dueno)", "rol": "DUENO" }
+      ]
+    },
+
+    "clientes": {
+      "descripcion": "Clientes B2B de la panificadora (~85 clientes activos)",
+      "acceso_telegram": "Solo para realizar pedidos y recibir recibos PDF",
+      "campos": {
+        "id_cliente":          { "tipo": "SERIAL", "pk": true },
+        "telegram_id":         { "tipo": "VARCHAR(100)", "unique": true, "nullable": true, "ejemplo": "@burger_grill" },
+        "nombre_negocio":      { "tipo": "VARCHAR(200)", "not_null": true, "ejemplo": "BURGER GRILL" },
+        "telefono":            { "tipo": "VARCHAR(50)", "nullable": true },
+        "direccion":           { "tipo": "TEXT", "nullable": true },
+        "contacto_principal":  { "tipo": "VARCHAR(200)", "nullable": true },
+        "categoria":           { "tipo": "ENUM", "valores": ["restaurante", "cafeteria", "market", "otro"], "default": "otro" },
+        "estado":              { "tipo": "ENUM", "valores": ["activo", "inactivo", "bloqueado"], "default": "activo" },
+        "fecha_registro":      { "tipo": "TIMESTAMP", "default": "CURRENT_TIMESTAMP" }
+      },
+      "indices": ["estado", "nombre_negocio"],
+      "ejemplos_clientes": [
+        "911", "A Y V COMIDA CHINA", "AHUMADITOS", "AHUMADOS GRILL",
+        "ANTOJOS BELENSATE", "BE FIT", "BURGER GRILL", "BURGER HOUSE",
+        "CABAÑA BISTRO", "CAZZO PIZZA", "CHELOS BURGER", "DAHAUS"
+      ]
+    },
+
+    "pedidos": {
+      "descripcion": "Cabecera de cada pedido B2B confirmado via Telegram",
+      "campos": {
+        "id_pedido":        { "tipo": "SERIAL", "pk": true },
+        "id_cliente":       { "tipo": "INTEGER", "fk": "clientes.id_cliente", "not_null": true },
+        "numero_recibo":    { "tipo": "VARCHAR(20)", "unique": true, "not_null": true, "nota": "Consecutivo desde 2638 (ultimo recibo actual)" },
+        "fecha_pedido":     { "tipo": "TIMESTAMP", "default": "CURRENT_TIMESTAMP" },
+        "fecha_entrega":    { "tipo": "DATE", "not_null": true, "nota": "Siempre dia siguiente al pedido" },
+        "estado":           { "tipo": "ENUM", "valores": ["pendiente", "confirmado", "entregado", "cancelado"], "default": "pendiente" },
+        "monto_total":      { "tipo": "NUMERIC(10,2)", "default": 0 },
+        "archivo_pdf_url":  { "tipo": "TEXT", "nullable": true, "nota": "URL del recibo en Google Drive" },
+        "observaciones":    { "tipo": "TEXT", "nullable": true },
+        "registrado_por":   { "tipo": "VARCHAR(200)", "nullable": true }
+      },
+      "indices": ["id_cliente", "fecha_pedido", "estado"]
+    },
+
+    "detalle_pedidos": {
+      "descripcion": "Lineas de producto por pedido (tipos de pan, peso, cantidad)",
+      "campos": {
+        "id_detalle":        { "tipo": "SERIAL", "pk": true },
+        "id_pedido":         { "tipo": "INTEGER", "fk": "pedidos.id_pedido", "on_delete": "CASCADE" },
+        "tipo_pan":          { "tipo": "VARCHAR(100)", "not_null": true, "ejemplos": ["BRIOCHE", "BASICA", "FRANCESA", "PAPA", "BATATA", "CROISSANTS", "HOJALDRES", "AFRECHO"] },
+        "producto":          { "tipo": "VARCHAR(100)", "not_null": true, "ejemplos": ["HAMBURGUESA", "PERRO CALIENTE", "SANDWICH"] },
+        "peso_g":            { "tipo": "INTEGER", "not_null": true, "valores_comunes": [45, 55, 70, 75, 85, 90, 95, 100, 105, 110, 115, 155, 520, 640, 720] },
+        "cantidad":          { "tipo": "INTEGER", "not_null": true },
+        "tipo_unidad":       { "tipo": "ENUM", "valores": ["unidad", "paquete"], "default": "unidad" },
+        "precio_unitario":   { "tipo": "NUMERIC(10,2)", "not_null": true },
+        "subtotal":          { "tipo": "NUMERIC(10,2)", "not_null": true, "formula": "cantidad * precio_unitario" }
+      },
+      "indices": ["id_pedido"]
+    },
+
+    "deudas": {
+      "descripcion": "Control de deudas por cliente (SOLO INTERNO - dueno/empleado via Telegram privado)",
+      "acceso": "Exclusivo dueno y empleados autorizados. Cliente NO ve este modulo.",
+      "campos": {
+        "id_deuda":           { "tipo": "SERIAL", "pk": true },
+        "id_cliente":         { "tipo": "INTEGER", "fk": "clientes.id_cliente", "not_null": true },
+        "id_pedido":          { "tipo": "INTEGER", "fk": "pedidos.id_pedido", "not_null": true },
+        "monto_original":     { "tipo": "NUMERIC(10,2)", "not_null": true, "nota": "Igual al monto_total del pedido" },
+        "monto_pagado":       { "tipo": "NUMERIC(10,2)", "default": 0 },
+        "saldo_pendiente":    { "tipo": "NUMERIC(10,2)", "computed": "monto_original - monto_pagado", "stored": true },
+        "estado":             { "tipo": "ENUM", "valores": ["pendiente", "pagado", "parcial"], "default": "pendiente" },
+        "fecha_creacion":     { "tipo": "TIMESTAMP", "default": "CURRENT_TIMESTAMP" },
+        "fecha_vencimiento":  { "tipo": "DATE", "nullable": true }
+      },
+      "indices": ["id_cliente", "estado"],
+      "trigger": "actualizar_estado_deuda (se ejecuta automaticamente despues de cada pago)"
+    },
+
+    "pagos": {
+      "descripcion": "Registro de pagos y abonos (SOLO INTERNO - registrado por dueno/empleado)",
+      "acceso": "Exclusivo dueno y empleados. Se registra via comando /admin en Telegram.",
+      "campos": {
+        "id_pago":        { "tipo": "SERIAL", "pk": true },
+        "id_deuda":       { "tipo": "INTEGER", "fk": "deudas.id_deuda", "not_null": true },
+        "id_cliente":     { "tipo": "INTEGER", "fk": "clientes.id_cliente", "not_null": true },
+        "monto_pagado":   { "tipo": "NUMERIC(10,2)", "not_null": true },
+        "fecha_pago":     { "tipo": "TIMESTAMP", "default": "CURRENT_TIMESTAMP" },
+        "metodo":         { "tipo": "ENUM", "valores": ["efectivo", "transferencia", "otro"], "default": "efectivo" },
+        "registrado_por": { "tipo": "VARCHAR(200)", "not_null": true, "nota": "Nombre del dueno o empleado que registra" },
+        "notas":          { "tipo": "TEXT", "nullable": true }
+      },
+      "indices": ["id_cliente", "fecha_pago"]
+    },
+
+    "produccion_diaria": {
+      "descripcion": "Consolidado de produccion del dia siguiente (auto-generado desde pedidos confirmados)",
+      "nota": "Se regenera cada vez que se confirma un pedido nuevo. Reemplaza el Sheet de Produccion actual.",
+      "campos": {
+        "id_produccion":      { "tipo": "SERIAL", "pk": true },
+        "fecha_produccion":   { "tipo": "DATE", "not_null": true },
+        "tipo_pan":           { "tipo": "VARCHAR(100)", "not_null": true },
+        "producto":           { "tipo": "VARCHAR(100)", "not_null": true },
+        "peso_g":             { "tipo": "INTEGER", "not_null": true },
+        "total_unidades":     { "tipo": "INTEGER", "not_null": true, "nota": "Suma de todos los pedidos del dia para ese tipo/peso" },
+        "peso_total_g":       { "tipo": "NUMERIC(10,2)", "formula": "total_unidades * peso_g" },
+        "estado":             { "tipo": "ENUM", "valores": ["pendiente", "en_proceso", "completado"], "default": "pendiente" }
+      },
+      "unique_constraint": ["fecha_produccion", "tipo_pan", "producto", "peso_g"],
+      "indices": ["fecha_produccion"]
+    }
+  },
+
+  "vistas": {
+    "vista_deuda_clientes": {
+      "descripcion": "Resumen de deuda total por cliente activo",
+      "uso": "Comando /deudas en bot admin",
+      "campos_retornados": ["id_cliente", "nombre_negocio", "telefono", "total_pedidos", "total_pagado", "deuda_total", "pedidos_pendientes", "ultimo_pedido"]
+    },
+    "vista_produccion_hoy": {
+      "descripcion": "Produccion consolidada para el dia actual",
+      "uso": "Comando /admin -> Produccion Hoy",
+      "campos_retornados": ["tipo_pan", "producto", "peso_g", "total_unidades", "clientes"]
+    },
+    "vista_top_deudores": {
+      "descripcion": "Top 10 clientes con mayor deuda pendiente",
+      "uso": "Reporte ejecutivo en bot admin",
+      "campos_retornados": ["nombre_negocio", "deuda_total", "total_pedidos", "total_pagado", "pedidos_pendientes"]
+    }
+  },
+
+  "funciones_postgresql": {
+    "generar_numero_recibo": {
+      "descripcion": "Genera numero de recibo consecutivo unico",
+      "nota": "Parte desde el ultimo recibo existente (2638)"
+    },
+    "consolidar_produccion": {
+      "descripcion": "Agrupa todos los pedidos confirmados de una fecha y actualiza produccion_diaria",
+      "parametro": "fecha_prod DATE"
+    },
+    "actualizar_estado_deuda": {
+      "descripcion": "Trigger: actualiza estado de deuda (pendiente/parcial/pagado) despues de cada pago registrado"
+    }
+  },
+
+  "flujo_de_datos": {
+    "pedido_cliente": [
+      "1. Cliente escribe /pedir en Telegram",
+      "2. Bot (Haiku) muestra formulario con botones: tipo de pan, peso, cantidad",
+      "3. Cliente confirma pedido",
+      "4. Se inserta en: pedidos + detalle_pedidos + deudas",
+      "5. Se llama consolidar_produccion(fecha_entrega)",
+      "6. Se genera PDF del recibo via generador_recibos_pdf.py",
+      "7. PDF se sube a Google Drive /Recibos/YYYY/MES/",
+      "8. PDF se envia al cliente por Telegram",
+      "9. Dueno recibe notificacion en Telegram privado"
+    ],
+    "registro_pago": [
+      "1. Dueno escribe /admin en Telegram privado",
+      "2. Selecciona: Registrar Pago",
+      "3. Busca cliente por nombre",
+      "4. Ve deuda actual del cliente",
+      "5. Ingresa monto y metodo de pago",
+      "6. Se inserta en: pagos",
+      "7. Trigger actualiza: deudas.monto_pagado y deudas.estado",
+      "8. Dueno recibe confirmacion con saldo actualizado"
+    ],
+    "reporte_produccion": [
+      "1. n8n ejecuta cron job a las 6am",
+      "2. Consulta vista_produccion_hoy en PostgreSQL",
+      "3. Escribe en Google Sheets: hoja Produccion_Hoy (limpia y actualizada)",
+      "4. Envia resumen por Telegram a @luisepm92"
+    ]
+  },
+
+  "arquitectura": {
+    "bot_cliente": {
+      "archivo": "4_telegram_bot_cliente.py",
+      "modelo_ia": "claude-haiku-4-5-20251001",
+      "comandos": ["/start", "/pedir"],
+      "descripcion": "Solo toma pedidos y envia recibo PDF"
+    },
+    "bot_admin": {
+      "archivo": "5_telegram_bot_dueno.py",
+      "modelo_ia": "claude-sonnet-4-6",
+      "comandos": ["/admin"],
+      "acciones": ["Clientes (agregar/editar/eliminar)", "Deudas (ver/consultar)", "Pagos (registrar)", "Produccion (ver consolidado)", "Reportes (ventas hoy/mes)"],
+      "acceso": "Solo usuarios en tabla usuarios con estado activo"
+    },
+    "infraestructura_docker": {
+      "servicios": {
+        "postgres": "PostgreSQL 15 Alpine - BD principal",
+        "pgadmin": "Solo desarrollo Mac - interfaz visual BD",
+        "n8n": "Orquestador de flujos automaticos",
+        "telegram_bot": "Bot Python con LangGraph"
+      }
+    },
+    "google_drive_estructura": {
+      "/Recibos/2026/Abril/": "Recibo_2639_BURGER_GRILL.pdf",
+      "/Recibos/2026/Mayo/": "Recibo_2640_SILVANOS.pdf"
+    }
+  },
+
+  "catalogo_productos": {
+    "tipos_pan": [
+      "BRIOCHE", "BASICA", "FRANCESA", "ESTANDAR",
+      "SOBADA HB", "SOBADA PE", "ABRIOCHADA",
+      "PAPA", "BATATA", "MANTEQUILLA",
+      "HOJALDRES", "CROISSANTS", "CROISSANTS SEMI",
+      "AFRECHO MANTEQUILLA Y MIEL"
+    ],
+    "pesos_g": [45, 55, 70, 75, 85, 90, 95, 100, 105, 110, 115, 155, 520, 640, 720],
+    "tipos_unidad": ["unidad", "paquete"]
+  }
+}

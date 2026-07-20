@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(code *)",
+      "Bash(python3 *)",
+      "Bash(openssl rand *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(pip install *)",
+      "Bash(python -m venv venv)",
+      "Bash(venv/bin/pip install *)",
+      "Bash(venv/bin/python *)",
+      "Bash(docker exec panificadora_db *)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/api/pedidos/pendientes)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/api/deudas)",
+      "Bash(curl -s http://localhost:8000/api/deudas)",
+      "Bash(curl -s http://localhost:8000/api/recetas)",
+      "Bash(curl -s \"http://localhost:8000/api/deudas?page=1&limit=3\")",
+      "Bash(curl -s \"http://localhost:8000/api/deudas?search=PRUEBA\")",
+      "Bash(curl -s -X POST http://localhost:8000/api/recetas -H 'Content-Type: application/json' -d '{\"tipo_masa\":\"BASICA\",\"peso_masa_g\":640,\"descripcion\":\"Masa básica de pan\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/recetas/BASICA/ingredientes -H 'Content-Type: application/json' -d '{\"ingrediente\":\"Harina de trigo\",\"cantidad_por_kg_masa\":0.55,\"unidad\":\"kg\"}')",
+      "Bash(curl -s http://localhost:8000/api/recetas/BASICA)",
+      "Bash(curl -s http://localhost:8000/api/recetas/BASICA/produccion-impact)",
+      "Bash(curl -s -o /tmp/test_recibo.pdf -w '%{http_code}' -X POST http://localhost:8000/api/recibos/1/generar -H 'Content-Type: application/json' -d '{\"monto_delivery\":2.5,\"aplica_iva\":false}')",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:8000/api/clientes)",
+      "Bash(curl -s -X POST http://localhost:8000/api/clientes -H 'Content-Type: application/json' -d '{\"nombre_negocio\":\"TEST CAFE\",\"telefono\":\"04141234567\",\"categoria\":\"cafeteria\"}')",
+      "Bash(curl -s http://localhost:8000/api/clientes/1)",
+      "Bash(curl -s -X PUT http://localhost:8000/api/clientes/26 -H 'Content-Type: application/json' -d '{\"nombre_negocio\":\"TEST CAFE EDITADO\",\"telefono\":\"04141234567\",\"categoria\":\"market\"}')",
+      "Bash(curl -s -X DELETE http://localhost:8000/api/clientes/26)",
+      "Bash(curl -s -X DELETE http://localhost:8000/api/clientes/25)",
+      "Bash(curl -s -X DELETE http://localhost:8000/api/recetas/BASICA)",
+      "Bash(curl -s -X POST http://localhost:8000/api/recetas -H 'Content-Type: application/json' -d '{\"tipo_masa\":\"FRANCESA\",\"peso_masa_g\":640,\"descripcion\":\"Pan francés tradicional\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/recetas -H 'Content-Type: application/json' -d '{\"tipo_masa\":\"BASICA\",\"peso_masa_g\":640,\"descripcion\":\"Pan básico\"}')",
+      "Bash(perl *)"
+    ]
+  }
+}

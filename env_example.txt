@@ -1,0 +1,31 @@
+# ============================================================
+# VARIABLES DE ENTORNO - SISTEMA PANIFICADORA
+# Copiar este archivo como .env y completar con valores reales
+# NUNCA subir el .env a Git o Drive
+# ============================================================
+
+# Base de Datos PostgreSQL
+DB_PASSWORD=elige_un_password_seguro_aqui
+
+# pgAdmin (solo desarrollo Mac)
+PGADMIN_EMAIL=luis.porras.1992@gmail.com
+PGADMIN_PASSWORD=password_pgadmin_aqui
+
+# n8n Orquestador
+N8N_HOST=localhost
+N8N_ENCRYPTION_KEY=genera_32_caracteres_random_aqui
+
+# Telegram - Bot Clientes (pedidos)
+TELEGRAM_TOKEN=token_del_bot_cliente_aqui
+
+# Telegram - Bot Admin (dueno/empleados)
+ADMIN_TELEGRAM_TOKEN=token_del_bot_admin_aqui
+
+# Telegram - ID del dueno
+DUENO_TELEGRAM_ID=@luisepm92
+
+# Anthropic API
+ANTHROPIC_API_KEY=sk-ant-api03-...
+
+# Google Drive - Carpeta de Recibos
+GOOGLE_DRIVE_FOLDER_ID=id_de_carpeta_recibos_en_drive

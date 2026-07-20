@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "panificadora-dashboard",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["logs", "-f", "panificadora_dashboard"],
+      "port": 8000
+    }
+  ]
+}

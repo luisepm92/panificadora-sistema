@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+
+  # ============================================================
+  # PostgreSQL - Base de Datos Principal
+  # ============================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: panificadora_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: panificadora
+      POSTGRES_USER: panif_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./queries_postgresql.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    networks:
+      - panificadora_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U panif_user -d panificadora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # pgAdmin - Interfaz visual para PostgreSQL
+  # Solo en desarrollo Mac: docker compose --profile dev up
+  # ============================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: panificadora_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "5050:80"
+    networks:
+      - panificadora_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - dev
+
+  # ============================================================
+  # n8n - Orquestador de Flujos Automaticos
+  # ============================================================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: panificadora_n8n
+    restart: unless-stopped
+    environment:
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://${N8N_HOST}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=panificadora
+      - DB_POSTGRESDB_USER=panif_user
+      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - panificadora_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ============================================================
+  # Bot Telegram (Python + LangGraph)
+  # ============================================================
+  telegram_bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: panificadora_bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - ADMIN_TELEGRAM_TOKEN=${ADMIN_TELEGRAM_TOKEN}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=panificadora
+      - DB_USER=panif_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID}
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials/service_account.json
+      - DUENO_TELEGRAM_ID=${DUENO_TELEGRAM_ID}
+    volumes:
+      - ./bot:/app
+      - ./credentials:/app/credentials
+    networks:
+      - panificadora_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ============================================================
+  # Dashboard Web (FastAPI)
+  # ============================================================
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: panificadora_dashboard
+    restart: unless-stopped
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=panificadora
+      - DB_USER=panif_user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DASHBOARD_USER=${DASHBOARD_USER}
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./dashboard:/app
+    networks:
+      - panificadora_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  panificadora_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  n8n_data:

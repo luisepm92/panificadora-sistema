@@ -1,0 +1,25 @@
+# ============================================================
+# DEPENDENCIAS - SISTEMA PANIFICADORA
+# ============================================================
+
+# Bot Telegram
+python-telegram-bot==21.3
+
+# Base de datos async
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# IA - Anthropic (Haiku + Sonnet)
+anthropic==0.30.0
+
+# Generacion de PDFs
+reportlab==4.2.2
+
+# LangGraph (orquestacion de agentes)
+langgraph==0.1.14
+langchain-anthropic==0.1.22
+langchain==0.2.12
+
+# Utilidades
+python-dotenv==1.0.1
+httpx==0.27.0
