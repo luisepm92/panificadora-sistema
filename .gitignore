@@ -1,0 +1,11 @@
+.env
+dashboard/.env
+credentials/service_account.json
+credentials/*.json
+__pycache__/
+*.pyc
+*.pyo
+backups/
+*.sql.gz
+.DS_Store
+*.log
