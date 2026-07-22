@@ -1731,33 +1731,57 @@ async function pedidoPaso4Toping() {
         lista.innerHTML = '<p style="color:red">Error: no se pudieron cargar los topings. Recarga la página.</p>';
     } else {
         lista.innerHTML = todos.map(t => `
-            <button onclick="pedidoAgregarItem('${t.nombre.replace(/'/g,"\\'")}')"`
+            <button id="toping-btn-${t.id_toping}" onclick="pedidoSeleccionarToping('${t.nombre.replace(/'/g,"\\'")}', ${t.id_toping})"`
                 + ` style="padding:12px;font-size:14px;background:${t.nombre==='Sin toping'?'#6c757d':'#667eea'};border-radius:8px;color:white;border:none;cursor:pointer">
                 ${esc(t.nombre)}
             </button>`).join('');
     }
 
+    // Resetear selección previa
+    document.getElementById('pedido-toping-seleccionado').style.display = 'none';
+    document.getElementById('btn-confirmar-toping').style.display = 'none';
+
     _mostrarPaso('pedido-paso-toping');
 }
 
-function pedidoAgregarItem(toping) {
-    const cantidad = _pedidoCantidadTemp;
-    if (!pedidoProdActual || !cantidad) return;
+let _topingSeleccionado = null;
+
+function pedidoSeleccionarToping(nombre, id) {
+    _topingSeleccionado = nombre;
+
+    // Resaltar botón seleccionado
+    document.querySelectorAll('#pedido-topings-lista button').forEach(b => {
+        b.style.opacity = '0.5';
+        b.style.outline = 'none';
+    });
+    const btnSel = document.getElementById(`toping-btn-${id}`);
+    if (btnSel) { btnSel.style.opacity = '1'; btnSel.style.outline = '3px solid #28a745'; }
+
+    // Mostrar confirmación
+    const info = document.getElementById('pedido-toping-seleccionado');
+    info.style.display = 'block';
+    info.innerHTML = `✅ Seleccionado: <strong>${esc(nombre)}</strong> — ¿Confirmas?`;
+    document.getElementById('btn-confirmar-toping').style.display = '';
+}
+
+function pedidoConfirmarToping() {
+    if (!_topingSeleccionado || !pedidoProdActual || !_pedidoCantidadTemp) return;
 
     const paqCant = pedidoProdActual.paquete_cantidad || 1;
     pedidoCarrito.push({
         tipo_pan:         pedidoProdActual.tipo_pan,
         producto:         pedidoProdActual.nombre,
         peso_g:           pedidoProdActual.peso_g,
-        cantidad,
+        cantidad:         _pedidoCantidadTemp,
         paquete_cantidad: paqCant,
         tipo_unidad:      paqCant > 1 ? 'paquete' : 'unidad',
         precio_unitario:  parseFloat(pedidoProdActual.precio_unitario),
-        toping:           toping === 'Sin toping' ? null : toping,
+        toping:           _topingSeleccionado === 'Sin toping' ? null : _topingSeleccionado,
     });
 
-    pedidoProdActual = null;
+    pedidoProdActual   = null;
     _pedidoCantidadTemp = 0;
+    _topingSeleccionado = null;
     _renderResumen();
     _mostrarPaso('pedido-paso-resumen');
 }

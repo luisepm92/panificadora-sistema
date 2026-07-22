@@ -216,8 +216,10 @@
         <div id="pedido-paso-toping" class="pedido-paso hidden">
             <p style="color:#667eea;font-weight:bold;margin-bottom:12px">Paso 4 de 4 — Toping</p>
             <div id="pedido-toping-prod" style="background:#f0f4ff;border-radius:8px;padding:10px;margin-bottom:14px;font-size:14px"></div>
-            <div id="pedido-topings-lista" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px"></div>
+            <div id="pedido-topings-lista" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px"></div>
+            <div id="pedido-toping-seleccionado" style="display:none;background:#e8f5e9;border-radius:8px;padding:10px;margin-bottom:12px;font-size:14px;text-align:center"></div>
             <div class="modal-actions" style="margin-top:16px">
+                <button id="btn-confirmar-toping" onclick="pedidoConfirmarToping()" style="display:none">✅ Agregar al pedido</button>
                 <button class="btn-secondary" onclick="pedidoPaso3()">← Cambiar cantidad</button>
             </div>
         </div>
