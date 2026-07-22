@@ -905,18 +905,22 @@ async function cargarRecetas() {
             tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin recetas registradas</td></tr>';
             return;
         }
-        tbody.innerHTML = recetas.map(r => `
+        tbody.innerHTML = recetas.map(r => {
+            const masa = esc(r.tipo_masa);
+            const desc = esc(r.descripcion || '');
+            return `
             <tr>
-                <td><strong>${esc(r.tipo_masa)}</strong></td>
+                <td><strong>${masa}</strong></td>
                 <td>${esc(r.descripcion || '—')}</td>
                 <td><span class="badge">${r.num_ingredientes}</span></td>
                 <td>${r.activo ? '✅' : '❌'}</td>
                 <td>
-                    <button onclick="abrirDetalleReceta(${JSON.stringify(r.tipo_masa)})">🔍 Ver</button>
-                    <button onclick="abrirModalEditarReceta(${JSON.stringify(r.tipo_masa)}, ${r.peso_masa_g}, ${JSON.stringify(r.descripcion || '')})">✏️</button>
-                    <button class="delete" onclick="eliminarReceta(${JSON.stringify(r.tipo_masa)})">🗑️</button>
+                    <button onclick="abrirDetalleReceta('${masa}')">🔍 Ver</button>
+                    <button onclick="abrirModalEditarReceta('${masa}', ${r.peso_masa_g}, '${desc}')">✏️</button>
+                    <button class="delete" onclick="eliminarReceta('${masa}')">🗑️</button>
                 </td>
-            </tr>`).join('');
+            </tr>`;
+        }).join('');
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="5" class="error">Error: ${e.message}</td></tr>`;
     }
