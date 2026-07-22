@@ -17,7 +17,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./queries_postgresql.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     networks:
       - panificadora_net
     healthcheck:

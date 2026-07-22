@@ -128,8 +128,8 @@ async function cargarPedidos() {
         }
         tbody.innerHTML = pedidos.map(p => `
             <tr>
-                <td><strong>${p.numero_recibo}</strong></td>
-                <td>${p.cliente}</td>
+                <td><strong>${esc(p.numero_recibo)}</strong></td>
+                <td>${esc(p.cliente)}</td>
                 <td>${formatMonto(p.monto_total)}</td>
                 <td>${formatFecha(p.fecha_creacion)}</td>
                 <td>
@@ -137,7 +137,7 @@ async function cargarPedidos() {
                     <button onclick="verDetalles(${p.id_pedido})">🔍 Ver</button>
                     <button onclick="abrirModalEditarPedido(${p.id_pedido})">✏️ Editar</button>
                     <button class="delete" onclick="eliminarPedido(${p.id_pedido})">🗑️</button>
-                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${p.id_pedido}, '${p.numero_recibo}')">🚫 Cancelar</button>
+                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${p.id_pedido}, ${JSON.stringify(esc(p.numero_recibo))})">🚫 Cancelar</button>
                 </td>
             </tr>`).join('');
     } catch (e) {
@@ -597,15 +597,15 @@ async function cargarDespachos() {
         }
         tbody.innerHTML = despachos.map(d => `
             <tr>
-                <td><strong>${d.numero_recibo}</strong></td>
-                <td>${d.cliente}</td>
+                <td><strong>${esc(d.numero_recibo)}</strong></td>
+                <td>${esc(d.cliente)}</td>
                 <td>${formatMonto(d.monto_total)}</td>
                 <td>${formatFecha(d.fecha_despacho_real)}</td>
                 <td>
                     <button onclick="abrirModalDespacho(${d.id_pedido})">📅 Fecha</button>
                     <button onclick="abrirModalRecibo(${d.id_pedido})">📄 PDF</button>
-                    <button style="background:#28a745" onclick="marcarEntregado(${d.id_pedido}, '${d.numero_recibo}')">✅ Entregar</button>
-                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${d.id_pedido}, '${d.numero_recibo}')">🚫 Cancelar</button>
+                    <button style="background:#28a745" onclick="marcarEntregado(${d.id_pedido}, ${JSON.stringify(esc(d.numero_recibo))})">✅ Entregar</button>
+                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${d.id_pedido}, ${JSON.stringify(esc(d.numero_recibo))})">🚫 Cancelar</button>
                 </td>
             </tr>`).join('');
     } catch (e) {
@@ -702,14 +702,14 @@ async function cargarDeudas() {
         } else {
             tbody.innerHTML = items.map(d => `
                 <tr>
-                    <td><strong>${d.nombre_negocio}</strong></td>
-                    <td>${d.telefono || '—'}</td>
+                    <td><strong>${esc(d.nombre_negocio)}</strong></td>
+                    <td>${esc(d.telefono || '—')}</td>
                     <td>${formatMonto(d.total_pedidos)}</td>
                     <td>${formatMonto(d.total_pagado)}</td>
                     <td style="color:${d.deuda_total > 0 ? '#dc3545' : '#28a745'};font-weight:bold">
                         ${formatMonto(d.deuda_total)}</td>
                     <td>${formatFecha(d.ultimo_pedido)}</td>
-                    <td><button onclick="abrirModalPago(${d.id_cliente}, '${d.nombre_negocio.replace(/'/g,"\\'")}')">💳 Pagos</button></td>
+                    <td><button onclick="abrirModalPago(${d.id_cliente}, ${JSON.stringify(esc(d.nombre_negocio))})">💳 Pagos</button></td>
                 </tr>`).join('');
         }
 
@@ -758,16 +758,16 @@ function renderClientes(lista) {
     const ESTADO_COLOR = { activo: '#28a745', inactivo: '#6c757d', bloqueado: '#dc3545' };
     tbody.innerHTML = lista.map(c => `
         <tr class="${c.estado !== 'activo' ? 'row-inactivo' : ''}">
-            <td><strong>${c.nombre_negocio}</strong></td>
-            <td>${c.telefono || '—'}</td>
-            <td>${c.contacto_principal || '—'}</td>
-            <td><span class="badge-cat">${c.categoria}</span></td>
-            <td><span style="color:${ESTADO_COLOR[c.estado] || '#333'};font-weight:bold">${c.estado}</span></td>
+            <td><strong>${esc(c.nombre_negocio)}</strong></td>
+            <td>${esc(c.telefono || '—')}</td>
+            <td>${esc(c.contacto_principal || '—')}</td>
+            <td><span class="badge-cat">${esc(c.categoria)}</span></td>
+            <td><span style="color:${ESTADO_COLOR[c.estado] || '#333'};font-weight:bold">${esc(c.estado)}</span></td>
             <td><span class="badge">${c.total_pedidos}</span></td>
             <td>
                 <button onclick="verDetalleCliente(${c.id_cliente})">🔍 Ver</button>
                 <button onclick="abrirModalEditarCliente(${c.id_cliente})">✏️</button>
-                <button class="delete" onclick="eliminarCliente(${c.id_cliente}, '${c.nombre_negocio.replace(/'/g, "\\'")}')">🗑️</button>
+                <button class="delete" onclick="eliminarCliente(${c.id_cliente}, ${JSON.stringify(esc(c.nombre_negocio))})">🗑️</button>
             </td>
         </tr>`).join('');
 }
@@ -870,9 +870,9 @@ async function verDetalleCliente(idCliente) {
 
         document.getElementById('detalle-cliente-nombre').textContent = c.nombre_negocio;
         document.getElementById('detalle-cliente-info').innerHTML = `
-            <p>📞 ${c.telefono || '—'} &nbsp;|&nbsp; 👤 ${c.contacto_principal || '—'}</p>
-            <p>📍 ${c.direccion || '—'} &nbsp;|&nbsp; 🏷️ ${c.categoria} &nbsp;|&nbsp; Estado: <strong>${c.estado}</strong></p>
-            ${c.telegram_id ? `<p>Telegram ID: ${c.telegram_id}</p>` : ''}`;
+            <p>📞 ${esc(c.telefono || '—')} &nbsp;|&nbsp; 👤 ${esc(c.contacto_principal || '—')}</p>
+            <p>📍 ${esc(c.direccion || '—')} &nbsp;|&nbsp; 🏷️ ${esc(c.categoria)} &nbsp;|&nbsp; Estado: <strong>${esc(c.estado)}</strong></p>
+            ${c.telegram_id ? `<p>Telegram ID: ${esc(c.telegram_id)}</p>` : ''}`;
 
         const ESTADO_COLOR = { confirmado: '#28a745', pendiente: '#ffc107', cancelado: '#dc3545', entregado: '#17a2b8' };
         document.querySelector('#detalle-cliente-pedidos tbody').innerHTML =
@@ -880,8 +880,8 @@ async function verDetalleCliente(idCliente) {
                 ? '<tr><td colspan="4" class="empty">Sin pedidos</td></tr>'
                 : pedidos_recientes.map(p => `
                     <tr>
-                        <td>${p.numero_recibo}</td>
-                        <td style="color:${ESTADO_COLOR[p.estado] || '#333'}">${p.estado}</td>
+                        <td>${esc(p.numero_recibo)}</td>
+                        <td style="color:${ESTADO_COLOR[p.estado] || '#333'}">${esc(p.estado)}</td>
                         <td>${formatMonto(p.monto_total)}</td>
                         <td>${formatFecha(p.fecha_pedido)}</td>
                     </tr>`).join('');
@@ -907,14 +907,14 @@ async function cargarRecetas() {
         }
         tbody.innerHTML = recetas.map(r => `
             <tr>
-                <td><strong>${r.tipo_masa}</strong></td>
-                <td>${r.descripcion || '—'}</td>
+                <td><strong>${esc(r.tipo_masa)}</strong></td>
+                <td>${esc(r.descripcion || '—')}</td>
                 <td><span class="badge">${r.num_ingredientes}</span></td>
                 <td>${r.activo ? '✅' : '❌'}</td>
                 <td>
-                    <button onclick="abrirDetalleReceta('${r.tipo_masa}')">🔍 Ver</button>
-                    <button onclick="abrirModalEditarReceta('${r.tipo_masa}', ${r.peso_masa_g}, \`${(r.descripcion || '').replace(/`/g, '\\`')}\`)">✏️</button>
-                    <button class="delete" onclick="eliminarReceta('${r.tipo_masa}')">🗑️</button>
+                    <button onclick="abrirDetalleReceta(${JSON.stringify(r.tipo_masa)})">🔍 Ver</button>
+                    <button onclick="abrirModalEditarReceta(${JSON.stringify(r.tipo_masa)}, ${r.peso_masa_g}, ${JSON.stringify(r.descripcion || '')})">✏️</button>
+                    <button class="delete" onclick="eliminarReceta(${JSON.stringify(r.tipo_masa)})">🗑️</button>
                 </td>
             </tr>`).join('');
     } catch (e) {

@@ -61,7 +61,7 @@ def solo_admin(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         obj   = update.message or update.callback_query.message
         user  = update.effective_user
-        tg_id = f"@{user.username}" if user.username else str(user.id)
+        tg_id = str(user.id)
         usuario = await get_usuario(tg_id)
         if not usuario:
             await obj.reply_text("❌ Acceso no autorizado.\nContacta al administrador del sistema.")

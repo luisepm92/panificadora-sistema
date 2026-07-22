@@ -31,9 +31,10 @@ _JS_VERSION = str(int(os.path.getmtime("static/app.js"))) if os.path.exists("sta
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 _ADMIN_USER = os.getenv("DASHBOARD_USER", "admin")
-_ADMIN_HASH = hashlib.sha256(
-    os.getenv("DASHBOARD_PASSWORD", "admin123").encode()
-).hexdigest()
+_DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD")
+if not _DASHBOARD_PASSWORD:
+    raise RuntimeError("DASHBOARD_PASSWORD no está definida en el entorno. El sistema no puede arrancar sin credenciales.")
+_ADMIN_HASH = hashlib.sha256(_DASHBOARD_PASSWORD.encode()).hexdigest()
 _SESSION_TTL = timedelta(hours=8)
 
 # token → expiry; reemplazar con Redis en producción multi-instancia

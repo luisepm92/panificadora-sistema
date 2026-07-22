@@ -191,7 +191,7 @@ def _resumen_carrito(items: list) -> tuple[str, float]:
 
 async def _verificar_cliente(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user  = update.effective_user
-    tg_id = f"@{user.username}" if user.username else str(user.id)
+    tg_id = str(user.id)
     cliente = await get_cliente(tg_id)
     if cliente:
         context.user_data["cliente"] = dict(cliente)
