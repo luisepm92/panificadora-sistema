@@ -1276,6 +1276,11 @@ async def eliminar_toping(id_toping: int, conn: asyncpg.Connection = Depends(get
     await conn.execute("UPDATE topings SET activo = false WHERE id_toping = $1", id_toping)
     return {"status": "OK"}
 
+@app.put("/api/topings/{id_toping}/activar")
+async def activar_toping(id_toping: int, conn: asyncpg.Connection = Depends(get_db)):
+    await conn.execute("UPDATE topings SET activo = true WHERE id_toping = $1", id_toping)
+    return {"status": "OK"}
+
 # ── Producción con topings ────────────────────────────────────────────────────
 
 @app.get("/api/produccion/{fecha}/topings")

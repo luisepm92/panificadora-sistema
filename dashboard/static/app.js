@@ -1885,9 +1885,12 @@ async function cargarTopings() {
         if (!rows.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">Sin topings registrados</td></tr>'; return; }
         tbody.innerHTML = rows.map(t => `
             <tr>
-                <td><strong>${t.nombre}</strong></td>
+                <td><strong>${esc(t.nombre)}</strong></td>
                 <td><span style="color:${t.activo ? '#28a745' : '#dc3545'}">${t.activo ? 'Activo' : 'Inactivo'}</span></td>
-                <td>${t.activo ? `<button class="delete" onclick="eliminarToping(${t.id_toping})">🗑️ Eliminar</button>` : '—'}</td>
+                <td>${t.activo
+                    ? `<button class="delete" onclick="eliminarToping(${t.id_toping})">🚫 Desactivar</button>`
+                    : `<button style="background:#28a745" onclick="activarToping(${t.id_toping})">✅ Activar</button>`
+                }</td>
             </tr>`).join('');
     } catch (e) { console.error(e); }
 }
@@ -1917,6 +1920,13 @@ async function guardarNuevoToping() {
 async function eliminarToping(id) {
     if (!confirm('¿Desactivar este toping?')) return;
     await apiFetch(`${API}/api/topings/${id}`, { method: 'DELETE' });
+    _topingsCatalogo = [];
+    cargarTopings();
+}
+
+async function activarToping(id) {
+    if (!confirm('¿Reactivar este toping?')) return;
+    await apiFetch(`${API}/api/topings/${id}/activar`, { method: 'PUT' });
     _topingsCatalogo = [];
     cargarTopings();
 }
