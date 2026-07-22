@@ -369,25 +369,27 @@ function _filtrarPorPan() {
         _renderGrupado(container, filtrados, 'tipo_masa',
             (key, filas) => `🍞 ${key} — <span style="color:#fff;opacity:.8">${_totalUdsLabel(filas)}</span>`,
             r => { const [cp, cu] = _paqCols(r); return `
-                  <td><span class="badge" style="background:#667eea">${r.tipo_masa}</span></td>
-                  <td>${r.producto}</td>
+                  <td><span class="badge" style="background:#667eea">${esc(r.tipo_masa)}</span></td>
+                  <td>${esc(r.producto)}</td>
                   <td style="text-align:center">${r.peso_g ? r.peso_g+'g' : '—'}</td>
                   <td style="text-align:center">${cp}</td>
                   <td style="text-align:center">${cu}</td>
-                  <td>${r.cliente}</td>`; },
-            ['Tipo Masa','Producto','Peso','Paquetes','Uds','Cliente']
+                  <td style="color:#667eea;font-size:13px">${esc(r.topings || '—')}</td>
+                  <td>${esc(r.cliente)}</td>`; },
+            ['Tipo Masa','Producto','Peso','Paquetes','Uds','Toping','Cliente']
         );
     } else {
         _renderGrupado(container, filtrados, 'cliente',
             (key, filas) => `🏪 ${key} — <span style="color:#fff;opacity:.8">${_totalUdsLabel(filas)}</span>`,
             r => { const [cp, cu] = _paqCols(r); return `
-                  <td>${r.cliente}</td>
-                  <td><span class="badge" style="background:#667eea">${r.tipo_masa}</span></td>
-                  <td>${r.producto}</td>
+                  <td>${esc(r.cliente)}</td>
+                  <td><span class="badge" style="background:#667eea">${esc(r.tipo_masa)}</span></td>
+                  <td>${esc(r.producto)}</td>
                   <td style="text-align:center">${r.peso_g ? r.peso_g+'g' : '—'}</td>
                   <td style="text-align:center">${cp}</td>
-                  <td style="text-align:center">${cu}</td>`; },
-            ['Cliente','Tipo Masa','Producto','Peso','Paquetes','Uds']
+                  <td style="text-align:center">${cu}</td>
+                  <td style="color:#667eea;font-size:13px">${esc(r.topings || '—')}</td>`; },
+            ['Cliente','Tipo Masa','Producto','Peso','Paquetes','Uds','Toping']
         );
     }
 }
