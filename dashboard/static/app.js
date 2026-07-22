@@ -495,7 +495,7 @@ async function _renderIngredientesTab(fecha) {
                         <td style="text-align:center">
                             ${r.tiene_receta
                                 ? `<button style="padding:4px 12px;font-size:12px"
-                                       onclick="abrirModalIngDetalle('${fecha}','${r.tipo_masa}')">
+                                       onclick="abrirModalIngDetalle('${fecha}','${esc(r.tipo_masa)}')">
                                        🧂 Ver detalles</button>`
                                 : `<span style="color:#999;font-size:12px">Sin receta</span>`}
                         </td>
@@ -1196,7 +1196,7 @@ function renderProductos(lista) {
             <td>${p.activo ? '✅' : '❌'}</td>
             <td>
                 <button onclick="abrirModalEditarProducto(${p.id_producto})">✏️</button>
-                <button class="${p.activo ? 'delete' : ''}" onclick="toggleProducto(${p.id_producto}, '${p.nombre.replace(/'/g, "\\'")}', ${p.activo})">
+                <button class="${p.activo ? 'delete' : ''}" onclick="toggleProducto(${p.id_producto}, '${esc(p.nombre)}', ${p.activo})">
                     ${p.activo ? '🚫 Desact.' : '✅ Activar'}
                 </button>
             </td>
@@ -1525,7 +1525,7 @@ function _renderListaClientes(lista) {
         return;
     }
     div.innerHTML = lista.map(c => `
-        <div onclick="pedidoSeleccionarCliente(${c.id_cliente}, '${c.nombre_negocio.replace(/'/g,"\\'")}' )"
+        <div onclick="pedidoSeleccionarCliente(${c.id_cliente}, '${esc(c.nombre_negocio)}')"
              style="padding:9px 14px;cursor:pointer;border-bottom:1px solid #dee2e6;font-size:14px;
                     ${_clienteSeleccionado === c.id_cliente ? 'background:#e8edff;font-weight:bold' : ''}"
              onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='${_clienteSeleccionado === c.id_cliente ? '#e8edff' : ''}'">
@@ -1735,7 +1735,7 @@ async function pedidoPaso4Toping() {
         lista.innerHTML = '<p style="color:red">Error: no se pudieron cargar los topings. Recarga la página.</p>';
     } else {
         lista.innerHTML = todos.map(t => `
-            <button id="toping-btn-${t.id_toping}" onclick="pedidoSeleccionarToping('${t.nombre.replace(/'/g,"\\'")}', ${t.id_toping})"`
+            <button id="toping-btn-${t.id_toping}" onclick="pedidoSeleccionarToping('${esc(t.nombre)}', ${t.id_toping})"`
                 + ` style="padding:12px;font-size:14px;background:${t.nombre==='Sin toping'?'#6c757d':'#667eea'};border-radius:8px;color:white;border:none;cursor:pointer">
                 ${esc(t.nombre)}
             </button>`).join('');
