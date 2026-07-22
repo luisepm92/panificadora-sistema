@@ -1458,7 +1458,7 @@ async function abrirModalDeudaManual() {
     } catch (e) { alert('Error cargando clientes: ' + e.message); return; }
     document.getElementById('dm-descripcion').value = '';
     document.getElementById('dm-monto').value = '';
-    document.getElementById('modal-deuda-manual').classList.remove('hidden');
+    abrirModal('modal-deuda-manual');
 }
 
 async function guardarDeudaManual() {
@@ -1894,7 +1894,7 @@ async function cargarTopings() {
 
 function abrirModalNuevoToping() {
     document.getElementById('toping-nombre').value = '';
-    document.getElementById('modal-nuevo-toping').classList.remove('hidden');
+    abrirModal('modal-nuevo-toping');
     setTimeout(() => document.getElementById('toping-nombre').focus(), 80);
 }
 
