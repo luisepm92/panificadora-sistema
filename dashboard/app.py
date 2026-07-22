@@ -589,8 +589,8 @@ async def cambiar_fecha_despacho(id_pedido: int, data: DespachoFecha, conn: asyn
         estado = await conn.fetchval("SELECT estado FROM pedidos WHERE id_pedido = $1", id_pedido)
         if estado is None:
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
-        if estado not in ("confirmado", "pendiente"):
-            raise HTTPException(status_code=409, detail=f"No se puede cambiar fecha de despacho de un pedido en estado '{estado}'")
+        if estado in ("cancelado",):
+            raise HTTPException(status_code=409, detail=f"No se puede cambiar fecha de despacho de un pedido cancelado")
         resultado = await conn.execute(
             "UPDATE pedidos SET fecha_despacho_real = $1 WHERE id_pedido = $2",
             data.nueva_fecha, id_pedido

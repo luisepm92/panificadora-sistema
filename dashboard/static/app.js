@@ -44,7 +44,10 @@ const seccionCargada = new Set();
 
 function formatFecha(iso) {
     if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    // Tomar solo la parte de fecha (YYYY-MM-DD) para evitar conversión de zona horaria
+    const parte = String(iso).slice(0, 10);
+    const [y, m, d] = parte.split('-');
+    return `${d}/${m}/${y}`;
 }
 
 function formatMonto(n) {
@@ -637,9 +640,10 @@ async function cambiarDespacho() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ nueva_fecha: nuevaFecha }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || `HTTP ${res.status}`); }
         cerrarModal('modal-despacho');
         cargarDespachos();
+        if (seccionCargada.has('pedidos')) cargarPedidos();
     } catch (e) { alert(`Error cambiando fecha: ${e.message}`); }
 }
 
