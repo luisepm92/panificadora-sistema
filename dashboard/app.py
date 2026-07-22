@@ -478,11 +478,14 @@ async def get_produccion_detalle(fecha: date, conn: asyncpg.Connection = Depends
                 COALESCE(MAX(pr.peso_g), MAX(pd.peso_g))                  AS peso_g,
                 SUM(pd.total_unidades)                                     AS cantidad,
                 COALESCE(MAX(pr.paquete_cantidad), 1)                      AS paquete_cantidad,
-                STRING_AGG(DISTINCT c.nombre_negocio, ', ')                AS clientes
+                STRING_AGG(DISTINCT c.nombre_negocio, ', ')                AS clientes,
+                STRING_AGG(DISTINCT COALESCE(dp.toping, 'Sin toping'), ' / ') AS topings
             FROM produccion_diaria pd
             JOIN pedidos  p ON p.id_pedido  = pd.id_pedido
             JOIN clientes c ON c.id_cliente = p.id_cliente
             LEFT JOIN productos pr ON pr.nombre = pd.producto
+            LEFT JOIN detalle_pedidos dp ON dp.id_pedido = pd.id_pedido
+                AND dp.producto = pd.producto AND dp.peso_g = pd.peso_g
             WHERE pd.fecha_produccion_requerida = $1
             GROUP BY pd.tipo_pan, pd.producto
             ORDER BY pd.tipo_pan, pd.producto

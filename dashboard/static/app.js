@@ -1957,12 +1957,12 @@ async function imprimirProduccionPorMasa(fecha) {
             return `<div style="page-break-inside:avoid;margin-bottom:20px;border:1px solid #ddd;border-radius:8px;padding:14px">
                 <h3 style="margin:0 0 10px;color:#667eea">🍞 ${esc(masa)} — ${totalUds} uds</h3>
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr><th>Producto</th><th style="text-align:right">Paq</th><th style="text-align:right">Uds</th><th style="text-align:right">Peso(g)</th></tr></thead>
+                    <thead><tr><th>Producto</th><th>Toping</th><th style="text-align:right">Paq</th><th style="text-align:right">Uds</th><th style="text-align:right">Peso(g)</th></tr></thead>
                     <tbody>${items.map(p => {
                         const paq = Number(p.paquete_cantidad) || 1;
                         const uds = Number(p.cantidad) || 0;
                         const paqCount = paq > 1 ? Math.round(uds / paq) : '—';
-                        return `<tr><td>${esc(p.producto)}</td><td style="text-align:right">${paqCount}</td><td style="text-align:right">${uds}</td><td style="text-align:right">${esc(p.peso_g) || '—'}</td></tr>`;
+                        return `<tr><td>${esc(p.producto)}</td><td style="color:#667eea">${esc(p.topings || '—')}</td><td style="text-align:right">${paqCount}</td><td style="text-align:right">${uds}</td><td style="text-align:right">${esc(p.peso_g) || '—'}</td></tr>`;
                     }).join('')}</tbody>
                 </table>
             </div>`;
@@ -1979,24 +1979,32 @@ async function imprimirProduccionPorMasa(fecha) {
 async function imprimirProduccionPorCliente(fecha) {
     if (!fecha) { alert('Selecciona una fecha primero.'); return; }
     try {
-        const res  = await apiFetch(`${API}/api/produccion/${fecha}/topings`);
+        const res  = await apiFetch(`${API}/api/produccion/${fecha}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const rows = await res.json();
+        if (!rows.length) { alert('Sin producción para esta fecha.'); return; }
 
-        // Agrupar por cliente
+        // Agrupar por cliente (un producto puede tener varios clientes)
         const porCliente = {};
         rows.forEach(r => {
-            if (!porCliente[r.cliente]) porCliente[r.cliente] = [];
-            porCliente[r.cliente].push(r);
+            const clientes = (r.cliente || '').split(', ');
+            clientes.forEach(cli => {
+                if (!porCliente[cli]) porCliente[cli] = [];
+                porCliente[cli].push(r);
+            });
         });
 
         const html = Object.entries(porCliente).sort().map(([cli, items]) => `
             <div style="page-break-inside:avoid;margin-bottom:20px;border:1px solid #ddd;border-radius:8px;padding:14px">
                 <h3 style="margin:0 0 10px">👤 ${esc(cli)}</h3>
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
-                    <thead><tr><th>Producto</th><th>Toping</th><th style="text-align:right">Uds</th></tr></thead>
-                    <tbody>${items.map(i => `
-                        <tr><td>${esc(i.producto)}</td><td>${esc(i.toping)}</td><td style="text-align:right">${esc(i.total_unidades)}</td></tr>
-                    `).join('')}</tbody>
+                    <thead><tr><th>Producto</th><th>Toping</th><th style="text-align:right">Paq</th><th style="text-align:right">Uds</th></tr></thead>
+                    <tbody>${items.map(i => {
+                        const paq = Number(i.paquete_cantidad) || 1;
+                        const uds = Number(i.total_unidades) || 0;
+                        const paqCount = paq > 1 ? Math.round(uds / paq) : '—';
+                        return `<tr><td>${esc(i.producto)}</td><td style="color:#667eea">${esc(i.topings || '—')}</td><td style="text-align:right">${paqCount}</td><td style="text-align:right">${uds}</td></tr>`;
+                    }).join('')}</tbody>
                 </table>
             </div>`).join('');
 
