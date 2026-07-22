@@ -1708,27 +1708,34 @@ async function pedidoPaso4Toping() {
     if (!cantidad || cantidad < 1) { alert('Ingresa una cantidad válida.'); return; }
     _pedidoCantidadTemp = cantidad;
 
-    // Cargar topings si no están cargados
-    if (!_topingsCatalogo.length) {
-        try {
-            const r = await apiFetch(`${API}/api/topings`);
-            _topingsCatalogo = r.ok ? (await r.json()).filter(t => t.activo) : [];
-        } catch { _topingsCatalogo = []; }
-    }
+    // Cargar topings siempre frescos
+    try {
+        const r = await apiFetch(`${API}/api/topings`);
+        if (r.ok) {
+            const todos_raw = await r.json();
+            _topingsCatalogo = todos_raw.filter(t => t.activo);
+        }
+    } catch (e) { console.error('Error cargando topings:', e); }
 
     const paq  = pedidoProdActual.paquete_cantidad || 1;
     const uds  = paq > 1 ? ` (${cantidad * paq} uds)` : '';
     document.getElementById('pedido-toping-prod').innerHTML =
-        `<strong>${pedidoProdActual.nombre}</strong> · ${cantidad} ${paq > 1 ? 'paq' : 'uds'}${uds}`;
+        `<strong>${esc(pedidoProdActual.nombre)}</strong> · ${cantidad} ${paq > 1 ? 'paq' : 'uds'}${uds}`;
 
     const lista = document.getElementById('pedido-topings-lista');
-    const todos = [..._topingsCatalogo.filter(t => t.nombre !== 'Sin toping'),
-                   { id_toping: 0, nombre: 'Sin toping' }];
-    lista.innerHTML = todos.map(t => `
-        <button onclick="pedidoAgregarItem('${t.nombre.replace(/'/g,"\\'")}')"`
-            + ` style="padding:12px;font-size:14px;background:${t.nombre==='Sin toping'?'#6c757d':'#667eea'};border-radius:8px">
-            ${t.nombre}
-        </button>`).join('');
+    const sinToping = { id_toping: 0, nombre: 'Sin toping' };
+    const activos   = _topingsCatalogo.filter(t => t.nombre !== 'Sin toping');
+    const todos     = [...activos, sinToping];
+
+    if (!todos.length) {
+        lista.innerHTML = '<p style="color:red">Error: no se pudieron cargar los topings. Recarga la página.</p>';
+    } else {
+        lista.innerHTML = todos.map(t => `
+            <button onclick="pedidoAgregarItem('${t.nombre.replace(/'/g,"\\'")}')"`
+                + ` style="padding:12px;font-size:14px;background:${t.nombre==='Sin toping'?'#6c757d':'#667eea'};border-radius:8px;color:white;border:none;cursor:pointer">
+                ${esc(t.nombre)}
+            </button>`).join('');
+    }
 
     _mostrarPaso('pedido-paso-toping');
 }
