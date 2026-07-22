@@ -767,7 +767,10 @@ function renderClientes(lista) {
             <td>
                 <button onclick="verDetalleCliente(${c.id_cliente})">🔍 Ver</button>
                 <button onclick="abrirModalEditarCliente(${c.id_cliente})">✏️</button>
-                <button class="delete" onclick="eliminarCliente(${c.id_cliente}, '${esc(c.nombre_negocio)}')">🗑️</button>
+                ${c.estado === 'activo'
+                    ? `<button class="delete" onclick="eliminarCliente(${c.id_cliente}, '${esc(c.nombre_negocio)}')">🗑️</button>`
+                    : `<button style="background:#28a745" onclick="activarCliente(${c.id_cliente}, '${esc(c.nombre_negocio)}')">✅ Activar</button>`
+                }
             </td>
         </tr>`).join('');
 }
@@ -841,6 +844,15 @@ async function guardarCliente() {
         cerrarModal('modal-cliente');
         await cargarClientes();
     } catch (e) { alert(`Error guardando cliente: ${e.message}`); }
+}
+
+async function activarCliente(idCliente, nombre) {
+    if (!confirm(`¿Reactivar a "${nombre}"?`)) return;
+    try {
+        const res = await apiFetch(`${API}/api/clientes/${idCliente}/activar`, { method: 'PUT' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await cargarClientes();
+    } catch (e) { alert(`Error activando cliente: ${e.message}`); }
 }
 
 async function eliminarCliente(idCliente, nombre) {

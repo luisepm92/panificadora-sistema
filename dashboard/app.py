@@ -1075,6 +1075,20 @@ async def crear_cliente(data: ClienteCreate, conn: asyncpg.Connection = Depends(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.put("/api/clientes/{id_cliente}/activar")
+async def activar_cliente(id_cliente: int, conn: asyncpg.Connection = Depends(get_db)):
+    try:
+        result = await conn.execute(
+            "UPDATE clientes SET estado = 'activo' WHERE id_cliente = $1", id_cliente
+        )
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+        return {"status": "OK"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.put("/api/clientes/{id_cliente}")
 async def editar_cliente(id_cliente: int, data: ClienteUpdate, conn: asyncpg.Connection = Depends(get_db)):
     try:
