@@ -811,6 +811,30 @@ async def eliminar_receta(tipo_masa: str, conn: asyncpg.Connection = Depends(get
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.put("/api/recetas/{tipo_masa}/desactivar")
+async def desactivar_receta(tipo_masa: str, conn: asyncpg.Connection = Depends(get_db)):
+    try:
+        result = await conn.execute("UPDATE tipos_masa SET activo = false WHERE tipo_masa = $1", tipo_masa)
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Receta no encontrada")
+        return {"status": "OK"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/recetas/{tipo_masa}/activar")
+async def activar_receta(tipo_masa: str, conn: asyncpg.Connection = Depends(get_db)):
+    try:
+        result = await conn.execute("UPDATE tipos_masa SET activo = true WHERE tipo_masa = $1", tipo_masa)
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Receta no encontrada")
+        return {"status": "OK"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/recetas/{tipo_masa}/ingredientes")
 async def agregar_ingrediente(tipo_masa: str, data: IngredienteCreate, conn: asyncpg.Connection = Depends(get_db)):
     try:

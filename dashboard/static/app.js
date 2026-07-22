@@ -917,7 +917,10 @@ async function cargarRecetas() {
                 <td>
                     <button onclick="abrirDetalleReceta('${masa}')">🔍 Ver</button>
                     <button onclick="abrirModalEditarReceta('${masa}', ${r.peso_masa_g}, '${desc}')">✏️</button>
-                    <button class="delete" onclick="eliminarReceta('${masa}')">🗑️</button>
+                    ${r.activo
+                        ? `<button class="delete" onclick="desactivarReceta('${masa}')">🚫 Desact.</button>`
+                        : `<button style="background:#28a745" onclick="activarReceta('${masa}')">✅ Activar</button>`
+                    }
                 </td>
             </tr>`;
         }).join('');
@@ -968,13 +971,22 @@ async function guardarReceta() {
     } catch (e) { alert(`Error guardando receta: ${e.message}`); }
 }
 
-async function eliminarReceta(tipoMasa) {
-    if (!confirm(`¿Eliminar la receta "${tipoMasa}" y todos sus ingredientes?`)) return;
+async function desactivarReceta(tipoMasa) {
+    if (!confirm(`¿Desactivar la receta "${tipoMasa}"?`)) return;
     try {
-        const res = await apiFetch(`${API}/api/recetas/${tipoMasa}`, { method: 'DELETE' });
+        const res = await apiFetch(`${API}/api/recetas/${tipoMasa}/desactivar`, { method: 'PUT' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         await cargarRecetas();
-    } catch (e) { alert(`Error eliminando receta: ${e.message}`); }
+    } catch (e) { alert(`Error desactivando receta: ${e.message}`); }
+}
+
+async function activarReceta(tipoMasa) {
+    if (!confirm(`¿Activar la receta "${tipoMasa}"?`)) return;
+    try {
+        const res = await apiFetch(`${API}/api/recetas/${tipoMasa}/activar`, { method: 'PUT' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        await cargarRecetas();
+    } catch (e) { alert(`Error activando receta: ${e.message}`); }
 }
 
 let _recetaPesoMasaG = 0;
