@@ -137,7 +137,7 @@ async function cargarPedidos() {
                     <button onclick="verDetalles(${p.id_pedido})">🔍 Ver</button>
                     <button onclick="abrirModalEditarPedido(${p.id_pedido})">✏️ Editar</button>
                     <button class="delete" onclick="eliminarPedido(${p.id_pedido})">🗑️</button>
-                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${p.id_pedido}, ${JSON.stringify(esc(p.numero_recibo))})">🚫 Cancelar</button>
+                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${p.id_pedido}, '${esc(p.numero_recibo)}')">🚫 Cancelar</button>
                 </td>
             </tr>`).join('');
     } catch (e) {
@@ -604,8 +604,8 @@ async function cargarDespachos() {
                 <td>
                     <button onclick="abrirModalDespacho(${d.id_pedido})">📅 Fecha</button>
                     <button onclick="abrirModalRecibo(${d.id_pedido})">📄 PDF</button>
-                    <button style="background:#28a745" onclick="marcarEntregado(${d.id_pedido}, ${JSON.stringify(esc(d.numero_recibo))})">✅ Entregar</button>
-                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${d.id_pedido}, ${JSON.stringify(esc(d.numero_recibo))})">🚫 Cancelar</button>
+                    <button style="background:#28a745" onclick="marcarEntregado(${d.id_pedido}, '${esc(d.numero_recibo)}')">✅ Entregar</button>
+                    <button style="background:#dc3545;color:#fff" onclick="cancelarPedido(${d.id_pedido}, '${esc(d.numero_recibo)}')">🚫 Cancelar</button>
                 </td>
             </tr>`).join('');
     } catch (e) {
@@ -709,7 +709,7 @@ async function cargarDeudas() {
                     <td style="color:${d.deuda_total > 0 ? '#dc3545' : '#28a745'};font-weight:bold">
                         ${formatMonto(d.deuda_total)}</td>
                     <td>${formatFecha(d.ultimo_pedido)}</td>
-                    <td><button onclick="abrirModalPago(${d.id_cliente}, ${JSON.stringify(esc(d.nombre_negocio))})">💳 Pagos</button></td>
+                    <td><button onclick="abrirModalPago(${d.id_cliente}, '${esc(d.nombre_negocio)}')">💳 Pagos</button></td>
                 </tr>`).join('');
         }
 
@@ -767,7 +767,7 @@ function renderClientes(lista) {
             <td>
                 <button onclick="verDetalleCliente(${c.id_cliente})">🔍 Ver</button>
                 <button onclick="abrirModalEditarCliente(${c.id_cliente})">✏️</button>
-                <button class="delete" onclick="eliminarCliente(${c.id_cliente}, ${JSON.stringify(esc(c.nombre_negocio))})">🗑️</button>
+                <button class="delete" onclick="eliminarCliente(${c.id_cliente}, '${esc(c.nombre_negocio)}')">🗑️</button>
             </td>
         </tr>`).join('');
 }
