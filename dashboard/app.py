@@ -526,8 +526,8 @@ async def get_ingredientes_detalle_masa(fecha: date, tipo_masa: str, conn: async
         ingredientes = await conn.fetch("""
             WITH gramos_receta AS (
                 SELECT rm.tipo_masa, rm.ingrediente,
-                       ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g::numeric, 2) AS gramos,
-                       SUM(ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g::numeric, 2))
+                       ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g::numeric, 1) AS gramos,
+                       SUM(ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g::numeric, 1))
                            OVER (PARTITION BY rm.tipo_masa) AS total_gramos
                 FROM recetas_masa rm
                 JOIN tipos_masa tm ON tm.tipo_masa = rm.tipo_masa
@@ -543,7 +543,7 @@ async def get_ingredientes_detalle_masa(fecha: date, tipo_masa: str, conn: async
                 GROUP BY COALESCE(pr.tipo_masa, pd.tipo_pan)
             )
             SELECT gr.ingrediente,
-                   ROUND(pm.total_masa_g::numeric / gr.total_gramos * gr.gramos, 2) AS cantidad_g
+                   ROUND(pm.total_masa_g::numeric / gr.total_gramos * gr.gramos, 1) AS cantidad_g
             FROM gramos_receta gr
             JOIN produccion_masa pm ON pm.tipo_masa = gr.tipo_masa
             ORDER BY gr.ingrediente

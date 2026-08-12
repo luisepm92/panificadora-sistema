@@ -541,7 +541,7 @@ async function abrirModalIngDetalle(fecha, tipoMasa) {
         document.getElementById('ing-detalle-body').innerHTML = ingredientes.map(i => `
             <tr>
                 <td>${i.ingrediente}</td>
-                <td style="text-align:right"><strong>${parseFloat(parseFloat(i.cantidad_g).toFixed(2))} g</strong></td>
+                <td style="text-align:right"><strong>${parseFloat(parseFloat(i.cantidad_g).toFixed(1))} g</strong></td>
             </tr>`).join('');
     } catch (e) {
         document.getElementById('ing-detalle-body').innerHTML =
@@ -1047,7 +1047,7 @@ async function abrirDetalleReceta(tipoMasa) {
 function _actualizarTotalReceta() {
     const inputs = document.querySelectorAll('#ingredientes-table tbody .ing-gramos');
     const total  = Array.from(inputs).reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
-    document.getElementById('receta-total-g').textContent = `${parseFloat(total.toFixed(2))} g`;
+    document.getElementById('receta-total-g').textContent = `${parseFloat(total.toFixed(1))} g`;
     // Actualizar ratios en vivo
     inputs.forEach(el => {
         const g     = parseFloat(el.value) || 0;
@@ -1065,7 +1065,7 @@ function renderIngredientes(ingredientes, pesoMasaG) {
         return;
     }
     tbody.innerHTML = ingredientes.map(i => {
-        const gramos = parseFloat((i.cantidad_por_kg_masa * pesoMasaG).toFixed(2));
+        const gramos = parseFloat((i.cantidad_por_kg_masa * pesoMasaG).toFixed(1));
         const ratio  = parseFloat(i.cantidad_por_kg_masa).toFixed(4);
         return `
         <tr data-id="${i.id_receta}" data-nombre="${i.ingrediente}">
@@ -1144,7 +1144,7 @@ async function guardarTodaReceta() {
         id:     parseInt(tr.dataset.id),
         gramos: parseFloat(tr.querySelector('.ing-gramos').value) || 0,
     }));
-    const nuevoTotal = parseFloat(items.reduce((s, i) => s + i.gramos, 0).toFixed(2));
+    const nuevoTotal = parseFloat(items.reduce((s, i) => s + i.gramos, 0).toFixed(1));
     if (nuevoTotal <= 0) { alert('El total de gramos debe ser mayor a 0.'); return; }
 
     try {
@@ -1169,7 +1169,7 @@ async function guardarTodaReceta() {
         if (fallidos > 0) throw new Error(`${fallidos} ingrediente(s) no se guardaron correctamente`);
 
         _recetaPesoMasaG = nuevoTotal;
-        alert(`✅ Receta guardada. Peso del batch: ${parseFloat(nuevoTotal.toFixed(2))} g`);
+        alert(`✅ Receta guardada. Peso del batch: ${parseFloat(nuevoTotal.toFixed(1))} g`);
         await cargarRecetas();
     } catch (e) { alert(`Error guardando receta: ${e.message}`); }
 }
