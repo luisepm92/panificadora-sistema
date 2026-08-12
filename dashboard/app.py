@@ -111,11 +111,11 @@ class DespachoFecha(BaseModel):
 
 class TipoMasaCreate(BaseModel):
     tipo_masa: str
-    peso_masa_g: int
+    peso_masa_g: float
     descripcion: Optional[str] = None
 
 class TipoMasaUpdate(BaseModel):
-    peso_masa_g: int
+    peso_masa_g: float
     descripcion: Optional[str] = None
 
 class IngredienteCreate(BaseModel):
