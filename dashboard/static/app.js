@@ -541,7 +541,7 @@ async function abrirModalIngDetalle(fecha, tipoMasa) {
         document.getElementById('ing-detalle-body').innerHTML = ingredientes.map(i => `
             <tr>
                 <td>${i.ingrediente}</td>
-                <td style="text-align:right"><strong>${parseInt(i.cantidad_g)} g</strong></td>
+                <td style="text-align:right"><strong>${parseFloat(parseFloat(i.cantidad_g).toFixed(2))} g</strong></td>
             </tr>`).join('');
     } catch (e) {
         document.getElementById('ing-detalle-body').innerHTML =

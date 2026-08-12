@@ -526,25 +526,26 @@ async def get_ingredientes_detalle_masa(fecha: date, tipo_masa: str, conn: async
         ingredientes = await conn.fetch("""
             WITH gramos_receta AS (
                 SELECT rm.tipo_masa, rm.ingrediente,
-                       ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g) AS gramos,
-                       SUM(ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g))
+                       ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g::numeric, 2) AS gramos,
+                       SUM(ROUND(rm.cantidad_por_kg_masa * tm.peso_masa_g::numeric, 2))
                            OVER (PARTITION BY rm.tipo_masa) AS total_gramos
                 FROM recetas_masa rm
                 JOIN tipos_masa tm ON tm.tipo_masa = rm.tipo_masa
                 WHERE rm.tipo_masa = $2
             ),
             produccion_masa AS (
-                SELECT pd.tipo_pan,
+                SELECT COALESCE(pr.tipo_masa, pd.tipo_pan) AS tipo_masa,
                        SUM(pd.total_unidades * COALESCE(pr.peso_g, pd.peso_g)) AS total_masa_g
                 FROM produccion_diaria pd
                 LEFT JOIN productos pr ON pr.nombre = pd.producto
-                WHERE pd.fecha_produccion_requerida = $1 AND pd.tipo_pan = $2
-                GROUP BY pd.tipo_pan
+                WHERE pd.fecha_produccion_requerida = $1
+                  AND COALESCE(pr.tipo_masa, pd.tipo_pan) = $2
+                GROUP BY COALESCE(pr.tipo_masa, pd.tipo_pan)
             )
             SELECT gr.ingrediente,
-                   ROUND(pm.total_masa_g::numeric / gr.total_gramos * gr.gramos) AS cantidad_g
+                   ROUND(pm.total_masa_g::numeric / gr.total_gramos * gr.gramos, 2) AS cantidad_g
             FROM gramos_receta gr
-            JOIN produccion_masa pm ON pm.tipo_pan = gr.tipo_masa
+            JOIN produccion_masa pm ON pm.tipo_masa = gr.tipo_masa
             ORDER BY gr.ingrediente
         """, fecha, tipo_masa)
         panes = await conn.fetch("""
