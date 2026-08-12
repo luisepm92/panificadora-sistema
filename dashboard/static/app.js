@@ -1047,7 +1047,7 @@ async function abrirDetalleReceta(tipoMasa) {
 function _actualizarTotalReceta() {
     const inputs = document.querySelectorAll('#ingredientes-table tbody .ing-gramos');
     const total  = Array.from(inputs).reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
-    document.getElementById('receta-total-g').textContent = `${Math.round(total)} g`;
+    document.getElementById('receta-total-g').textContent = `${parseFloat(total.toFixed(2))} g`;
     // Actualizar ratios en vivo
     inputs.forEach(el => {
         const g     = parseFloat(el.value) || 0;
@@ -1065,13 +1065,13 @@ function renderIngredientes(ingredientes, pesoMasaG) {
         return;
     }
     tbody.innerHTML = ingredientes.map(i => {
-        const gramos = Math.round(i.cantidad_por_kg_masa * pesoMasaG);
+        const gramos = parseFloat((i.cantidad_por_kg_masa * pesoMasaG).toFixed(2));
         const ratio  = parseFloat(i.cantidad_por_kg_masa).toFixed(4);
         return `
         <tr data-id="${i.id_receta}" data-nombre="${i.ingrediente}">
             <td><strong>${i.ingrediente}</strong></td>
             <td style="text-align:center">
-                <input type="number" class="ing-gramos" value="${gramos}" min="0" step="1"
+                <input type="number" class="ing-gramos" value="${gramos}" min="0" step="0.01"
                     style="width:90px;font-size:14px;text-align:right;padding:4px 6px"
                     oninput="_actualizarTotalReceta()"> g
             </td>
@@ -1144,13 +1144,11 @@ async function guardarTodaReceta() {
         id:     parseInt(tr.dataset.id),
         gramos: parseFloat(tr.querySelector('.ing-gramos').value) || 0,
     }));
-    // Usar gramos redondeados para que el total sea exactamente la suma de enteros
-    const itemsRedondeados = items.map(i => ({ ...i, gramos: Math.round(i.gramos) }));
-    const nuevoTotal = itemsRedondeados.reduce((s, i) => s + i.gramos, 0);
+    const nuevoTotal = parseFloat(items.reduce((s, i) => s + i.gramos, 0).toFixed(2));
     if (nuevoTotal <= 0) { alert('El total de gramos debe ser mayor a 0.'); return; }
 
     try {
-        // 1. Actualizar peso_masa_g = suma exacta de gramos redondeados
+        // 1. Actualizar peso_masa_g = suma de gramos con 2 decimales
         const resMasa = await apiFetch(`${API}/api/recetas/${recetaActivaNombre}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -1158,8 +1156,8 @@ async function guardarTodaReceta() {
         });
         if (!resMasa.ok) throw new Error('Error actualizando peso del batch');
 
-        // 2. Guardar ratio = gramos_redondeados / total (sin redondear el ratio)
-        const resultados = await Promise.all(itemsRedondeados.map(item => {
+        // 2. Guardar ratio = gramos / total
+        const resultados = await Promise.all(items.map(item => {
             const ratio = item.gramos / nuevoTotal;
             return apiFetch(`${API}/api/recetas/${recetaActivaNombre}/ingredientes/${item.id}`, {
                 method: 'PUT',
@@ -1171,7 +1169,7 @@ async function guardarTodaReceta() {
         if (fallidos > 0) throw new Error(`${fallidos} ingrediente(s) no se guardaron correctamente`);
 
         _recetaPesoMasaG = nuevoTotal;
-        alert(`✅ Receta guardada. Peso del batch: ${nuevoTotal} g`);
+        alert(`✅ Receta guardada. Peso del batch: ${parseFloat(nuevoTotal.toFixed(2))} g`);
         await cargarRecetas();
     } catch (e) { alert(`Error guardando receta: ${e.message}`); }
 }
