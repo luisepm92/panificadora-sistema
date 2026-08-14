@@ -895,7 +895,7 @@ def _generar_pdf(pedido: dict, cliente: dict, items: list) -> bytes:
         style=TableStyle([("LINEABOVE", (0, 0), (-1, -1), 0.8, colors.HexColor("#2C3E50"))]))
 
     story = []
-    story.append(Paragraph("PANIFICADORA", st_empresa))
+    story.append(Paragraph("Pan Mistico", st_empresa))
     story.append(Paragraph("Pan fresco cada día", st_slogan))
     story.append(linea)
     story.append(Spacer(1, 3*mm))
@@ -914,9 +914,9 @@ def _generar_pdf(pedido: dict, cliente: dict, items: list) -> bytes:
         story.append(Paragraph(f"Tel: {cliente['telefono']}", st_label))
     story.append(Spacer(1, 4*mm))
 
-    encabezado = [["Tipo de Pan", "Peso", "Cant.", "P.Unit.", "Total"]]
+    encabezado = [["Producto", "Peso", "Cant.", "P.Unit.", "Total"]]
     filas = [[
-        item["tipo_pan"], f"{item['peso_g']}g", str(item["cantidad"]),
+        item["producto"], f"{item['peso_g']}g", str(item["cantidad"]),
         f"${float(item['precio_unitario']):.2f}", f"${float(item['subtotal']):.2f}",
     ] for item in items]
 
