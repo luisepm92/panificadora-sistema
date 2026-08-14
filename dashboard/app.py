@@ -413,22 +413,22 @@ async def get_produccion_por_fecha(fecha: date, conn: asyncpg.Connection = Depen
     try:
         rows = await conn.fetch("""
             SELECT
-                pd.tipo_pan                                                AS tipo_masa,
+                pd.tipo_pan                                        AS tipo_masa,
                 pd.producto,
-                MAX(pd.peso_g)                                             AS peso_g,
-                SUM(pd.total_unidades)                                     AS total_unidades,
-                COALESCE(MAX(pr.paquete_cantidad), 1)                      AS paquete_cantidad,
-                STRING_AGG(DISTINCT c.nombre_negocio, ', ')                AS cliente,
-                STRING_AGG(DISTINCT COALESCE(dp.toping, 'Sin toping'), ' / ') AS topings
+                COALESCE(pr.peso_g, pd.peso_g)                    AS peso_g,
+                pd.total_unidades,
+                COALESCE(pr.paquete_cantidad, 1)                   AS paquete_cantidad,
+                c.nombre_negocio                                   AS cliente,
+                (SELECT STRING_AGG(DISTINCT COALESCE(dp2.toping, 'Sin toping'), ' / ')
+                 FROM detalle_pedidos dp2
+                 WHERE dp2.id_pedido = pd.id_pedido
+                   AND dp2.producto  = pd.producto)                AS topings
             FROM produccion_diaria pd
-            JOIN pedidos  p  ON p.id_pedido   = pd.id_pedido
-            JOIN clientes c  ON c.id_cliente  = p.id_cliente
+            JOIN pedidos  p ON p.id_pedido  = pd.id_pedido
+            JOIN clientes c ON c.id_cliente = p.id_cliente
             LEFT JOIN productos pr ON pr.nombre = pd.producto
-            LEFT JOIN detalle_pedidos dp ON dp.id_pedido = pd.id_pedido
-                AND dp.producto = pd.producto AND dp.peso_g = pd.peso_g
             WHERE pd.fecha_produccion_requerida = $1
-            GROUP BY pd.tipo_pan, pd.producto
-            ORDER BY pd.tipo_pan, MAX(pd.peso_g)
+            ORDER BY pd.tipo_pan, COALESCE(pr.peso_g, pd.peso_g), c.nombre_negocio
         """, fecha)
         return [dict(row) for row in rows]
     except Exception as e:
