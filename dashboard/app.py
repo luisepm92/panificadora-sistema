@@ -477,9 +477,9 @@ async def get_produccion_detalle(fecha: date, conn: asyncpg.Connection = Depends
                 pd.tipo_pan                                                AS tipo_masa,
                 pd.producto,
                 COALESCE(MAX(pr.peso_g), MAX(pd.peso_g))                  AS peso_g,
-                SUM(pd.total_unidades)                                     AS cantidad,
+                SUM(pd.total_unidades)                                     AS total_unidades,
                 COALESCE(MAX(pr.paquete_cantidad), 1)                      AS paquete_cantidad,
-                STRING_AGG(DISTINCT c.nombre_negocio, ', ')                AS clientes,
+                c.nombre_negocio                                           AS cliente,
                 STRING_AGG(DISTINCT COALESCE(dp.toping, 'Sin toping'), ' / ') AS topings
             FROM produccion_diaria pd
             JOIN pedidos  p ON p.id_pedido  = pd.id_pedido
@@ -488,8 +488,8 @@ async def get_produccion_detalle(fecha: date, conn: asyncpg.Connection = Depends
             LEFT JOIN detalle_pedidos dp ON dp.id_pedido = pd.id_pedido
                 AND dp.producto = pd.producto AND dp.peso_g = pd.peso_g
             WHERE pd.fecha_produccion_requerida = $1
-            GROUP BY pd.tipo_pan, pd.producto
-            ORDER BY pd.tipo_pan, pd.producto
+            GROUP BY pd.tipo_pan, pd.producto, c.nombre_negocio
+            ORDER BY pd.tipo_pan, pd.producto, c.nombre_negocio
         """, fecha)
         return [dict(r) for r in rows]
     except Exception as e:

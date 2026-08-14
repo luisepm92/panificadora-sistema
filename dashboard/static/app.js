@@ -465,7 +465,7 @@ async function _renderIngredientesTab(fecha) {
                 </thead>
                 <tbody>
                     ${detalle.map(r => {
-                        const [cp, cu] = _paqColsDet(r.cantidad, r.paquete_cantidad);
+                        const [cp, cu] = _paqColsDet(r.total_unidades, r.paquete_cantidad);
                         return `
                     <tr>
                         <td><span class="badge" style="background:#667eea">${r.tipo_masa}</span></td>
@@ -473,7 +473,7 @@ async function _renderIngredientesTab(fecha) {
                         <td style="text-align:center">${r.peso_g ? r.peso_g+'g' : '—'}</td>
                         <td style="text-align:center">${cp}</td>
                         <td style="text-align:center">${cu}</td>
-                        <td style="color:#555;font-size:13px">${r.clientes || '—'}</td>
+                        <td style="color:#555;font-size:13px">${r.cliente || '—'}</td>
                     </tr>`;}).join('')}
                 </tbody>
             </table>`;
