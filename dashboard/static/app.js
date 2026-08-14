@@ -369,7 +369,21 @@ function _filtrarPorPan() {
     }
 
     if (_porPanGrupo === 'masa') {
-        _renderGrupado(container, filtrados, 'tipo_masa',
+        // Agrupar por (tipo_masa, producto) sumando unidades de todos los clientes
+        const agregado = [];
+        const idx = {};
+        filtrados.forEach(r => {
+            const k = `${r.tipo_masa}||${r.producto}`;
+            if (idx[k] === undefined) {
+                idx[k] = agregado.length;
+                agregado.push({ ...r, total_unidades: r.total_unidades,
+                    clientes_lista: [r.cliente] });
+            } else {
+                agregado[idx[k]].total_unidades += r.total_unidades;
+                agregado[idx[k]].clientes_lista.push(r.cliente);
+            }
+        });
+        _renderGrupado(container, agregado, 'tipo_masa',
             (key, filas) => `🍞 ${key} — <span style="color:#fff;opacity:.8">${_totalUdsLabel(filas)}</span>`,
             r => { const [cp, cu] = _paqCols(r); return `
                   <td><span class="badge" style="background:#667eea">${esc(r.tipo_masa)}</span></td>
@@ -378,8 +392,8 @@ function _filtrarPorPan() {
                   <td style="text-align:center">${cp}</td>
                   <td style="text-align:center">${cu}</td>
                   <td style="color:#667eea;font-size:13px">${esc(r.topings || '—')}</td>
-                  <td>${esc(r.cliente)}</td>`; },
-            ['Tipo Masa','Producto','Peso','Paquetes','Uds','Toping','Cliente']
+                  <td style="font-size:13px;color:#555">${esc(r.clientes_lista.join(', '))}</td>`; },
+            ['Tipo Masa','Producto','Peso','Paquetes','Uds','Toping','Clientes']
         );
     } else {
         _renderGrupado(container, filtrados, 'cliente',
