@@ -27,7 +27,8 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 load_dotenv()
 
 # Versión del JS calculada al inicio desde el mtime del archivo
-_JS_VERSION = str(int(os.path.getmtime("static/app.js"))) if os.path.exists("static/app.js") else "0"
+_JS_STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "app.js")
+_JS_VERSION = str(int(os.path.getmtime(_JS_STATIC_DIR))) if os.path.exists(_JS_STATIC_DIR) else "0"
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 _ADMIN_USER = os.getenv("DASHBOARD_USER", "admin")
@@ -39,6 +40,12 @@ _SESSION_TTL = timedelta(hours=8)
 
 # token → expiry; reemplazar con Redis en producción multi-instancia
 _sessions: dict[str, datetime] = {}
+
+def _limpiar_sesiones_expiradas():
+    now = datetime.utcnow()
+    expirados = [t for t, exp in _sessions.items() if now > exp]
+    for t in expirados:
+        _sessions.pop(t, None)
 
 # Rate limiting login: ip → (intentos, primer_intento)
 _login_attempts: dict[str, tuple[int, datetime]] = {}
@@ -82,6 +89,10 @@ async def auth_middleware(request: Request, call_next):
     if not expiry or datetime.utcnow() > expiry:
         _sessions.pop(token, None)
         return JSONResponse(status_code=401, content={"detail": "Sesión expirada"})
+
+    # Limpieza periódica de tokens expirados (cada ~50 requests)
+    if len(_sessions) > 50:
+        _limpiar_sesiones_expiradas()
 
     return await call_next(request)
 
@@ -199,7 +210,13 @@ async def get_pedido_detalles(id_pedido: int, conn: asyncpg.Connection = Depends
         pedido = await conn.fetchrow("SELECT * FROM pedidos WHERE id_pedido = $1", id_pedido)
         if not pedido:
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
-        detalles = await conn.fetch("SELECT * FROM detalle_pedidos WHERE id_pedido = $1", id_pedido)
+        detalles = await conn.fetch("""
+            SELECT dp.*, COALESCE(pr.paquete_cantidad, 1) AS paquete_cantidad
+            FROM detalle_pedidos dp
+            LEFT JOIN productos pr ON pr.nombre = dp.producto
+            WHERE dp.id_pedido = $1
+            ORDER BY dp.id_detalle
+        """, id_pedido)
         return {"pedido": dict(pedido), "detalles": [dict(d) for d in detalles]}
     except HTTPException:
         raise
@@ -209,12 +226,13 @@ async def get_pedido_detalles(id_pedido: int, conn: asyncpg.Connection = Depends
 @app.post("/api/pedidos/{id_pedido}/confirmar")
 async def confirmar_pedido(id_pedido: int, data: PedidoConfirmacion, conn: asyncpg.Connection = Depends(get_db)):
     try:
-        estado_actual = await conn.fetchval("SELECT estado FROM pedidos WHERE id_pedido = $1", id_pedido)
-        if not estado_actual:
-            raise HTTPException(status_code=404, detail="Pedido no encontrado")
-        if estado_actual != "pendiente":
-            raise HTTPException(status_code=409, detail=f"Solo se pueden confirmar pedidos PENDIENTES (estado actual: {estado_actual})")
         async with conn.transaction():
+            # FOR UPDATE previene race condition si dos admins confirman simultáneamente
+            estado_actual = await conn.fetchval("SELECT estado FROM pedidos WHERE id_pedido = $1 FOR UPDATE", id_pedido)
+            if not estado_actual:
+                raise HTTPException(status_code=404, detail="Pedido no encontrado")
+            if estado_actual != "pendiente":
+                raise HTTPException(status_code=409, detail=f"Solo se pueden confirmar pedidos PENDIENTES (estado actual: {estado_actual})")
             await conn.execute("""
                 UPDATE pedidos SET
                     estado = 'confirmado',
@@ -326,8 +344,16 @@ async def editar_pedido_manual(id_pedido: int, data: PedidoManualEdit, conn: asy
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
         if pedido["estado"] != "pendiente":
             raise HTTPException(status_code=409, detail=f"Solo se pueden editar pedidos PENDIENTES (estado actual: {pedido['estado']})")
+        monto_total = round(sum(l.cantidad * l.precio_unitario for l in data.lineas), 2)
+        # Validar antes de modificar: nuevo monto no puede ser menor que lo ya pagado
+        deuda_actual = await conn.fetchrow(
+            "SELECT monto_pagado FROM deudas WHERE id_pedido = $1 AND estado IN ('pendiente', 'parcial')",
+            id_pedido
+        )
+        if deuda_actual and monto_total < float(deuda_actual["monto_pagado"]):
+            raise HTTPException(status_code=409,
+                detail=f"El nuevo monto ({monto_total}) es menor que lo ya pagado ({float(deuda_actual['monto_pagado'])})")
         async with conn.transaction():
-            monto_total = round(sum(l.cantidad * l.precio_unitario for l in data.lineas), 2)
             await conn.execute("""
                 UPDATE pedidos SET monto_total = $1 WHERE id_pedido = $2
             """, monto_total, id_pedido)
@@ -341,14 +367,6 @@ async def editar_pedido_manual(id_pedido: int, data: PedidoManualEdit, conn: asy
                     VALUES ($1, $2, $3, $4, $5, $6::tipo_unidad, $7, $8, $9)
                 """, id_pedido, tipo_pan_detalle, l.producto, l.peso_g,
                     l.cantidad, l.tipo_unidad, l.precio_unitario, subtotal, l.toping)
-            # Validar que el nuevo monto no sea menor a lo ya pagado
-            deuda_actual = await conn.fetchrow(
-                "SELECT monto_pagado FROM deudas WHERE id_pedido = $1 AND estado IN ('pendiente', 'parcial')",
-                id_pedido
-            )
-            if deuda_actual and monto_total < float(deuda_actual["monto_pagado"]):
-                raise HTTPException(status_code=409,
-                    detail=f"El nuevo monto ({monto_total}) es menor que lo ya pagado ({float(deuda_actual['monto_pagado'])})")
             # Actualizar monto_original de la deuda si existe (pendiente o parcial)
             await conn.execute("""
                 UPDATE deudas SET monto_original = $1
@@ -392,8 +410,9 @@ async def cancelar_pedido(id_pedido: int, conn: asyncpg.Connection = Depends(get
             await conn.execute(
                 "UPDATE pedidos SET estado = 'cancelado' WHERE id_pedido = $1", id_pedido
             )
+            # Anular deudas pendientes/parciales sin tocar monto_pagado (nada fue cobrado)
             await conn.execute(
-                "UPDATE deudas SET estado = 'pagado'::estado_deuda, monto_pagado = monto_original WHERE id_pedido = $1", id_pedido
+                "UPDATE deudas SET estado = 'anulado'::estado_deuda WHERE id_pedido = $1 AND estado IN ('pendiente','parcial')", id_pedido
             )
             # Si era confirmado, eliminar su entrada de producción
             if pedido["estado"] == "confirmado":
@@ -447,9 +466,16 @@ async def get_ingredientes_por_fecha(fecha: date, conn: asyncpg.Connection = Dep
 @app.get("/api/produccion/{fecha}/estado")
 async def get_estado_produccion(fecha: date, conn: asyncpg.Connection = Depends(get_db)):
     try:
-        estado = await conn.fetchval(
-            "SELECT estado FROM produccion_diaria WHERE fecha_produccion_requerida = $1 LIMIT 1", fecha
-        )
+        # Priorizar el estado más avanzado: completado > en_proceso > pendiente
+        estado = await conn.fetchval("""
+            SELECT estado FROM produccion_diaria
+            WHERE fecha_produccion_requerida = $1
+            ORDER BY CASE estado
+                WHEN 'completado'  THEN 1
+                WHEN 'en_proceso'  THEN 2
+                ELSE 3
+            END LIMIT 1
+        """, fecha)
         return {"estado": estado or "pendiente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -590,8 +616,8 @@ async def cambiar_fecha_despacho(id_pedido: int, data: DespachoFecha, conn: asyn
         estado = await conn.fetchval("SELECT estado FROM pedidos WHERE id_pedido = $1", id_pedido)
         if estado is None:
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
-        if estado in ("cancelado",):
-            raise HTTPException(status_code=409, detail=f"No se puede cambiar fecha de despacho de un pedido cancelado")
+        if estado in ("cancelado", "entregado"):
+            raise HTTPException(status_code=409, detail=f"No se puede cambiar fecha de despacho de un pedido {estado}")
         resultado = await conn.execute(
             "UPDATE pedidos SET fecha_despacho_real = $1 WHERE id_pedido = $2",
             data.nueva_fecha, id_pedido
@@ -793,21 +819,26 @@ async def crear_receta(data: TipoMasaCreate, conn: asyncpg.Connection = Depends(
 @app.put("/api/recetas/{tipo_masa}")
 async def editar_receta(tipo_masa: str, data: TipoMasaUpdate, conn: asyncpg.Connection = Depends(get_db)):
     try:
-        await conn.execute("""
+        result = await conn.execute("""
             UPDATE tipos_masa
             SET peso_masa_g = $1,
                 descripcion = COALESCE($2, descripcion)
             WHERE tipo_masa = $3
         """, data.peso_masa_g, data.descripcion, tipo_masa)
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Receta no encontrada")
         return {"status": "OK"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/recetas/{tipo_masa}")
 async def eliminar_receta(tipo_masa: str, conn: asyncpg.Connection = Depends(get_db)):
     try:
-        await conn.execute("DELETE FROM recetas_masa WHERE tipo_masa = $1", tipo_masa)
-        await conn.execute("DELETE FROM tipos_masa WHERE tipo_masa = $1", tipo_masa)
+        async with conn.transaction():
+            await conn.execute("DELETE FROM recetas_masa WHERE tipo_masa = $1", tipo_masa)
+            await conn.execute("DELETE FROM tipos_masa WHERE tipo_masa = $1", tipo_masa)
         return {"status": "OK"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1095,7 +1126,7 @@ async def activar_cliente(id_cliente: int, conn: asyncpg.Connection = Depends(ge
 @app.put("/api/clientes/{id_cliente}")
 async def editar_cliente(id_cliente: int, data: ClienteUpdate, conn: asyncpg.Connection = Depends(get_db)):
     try:
-        await conn.execute("""
+        result = await conn.execute("""
             UPDATE clientes SET
                 nombre_negocio     = $1,
                 telefono           = $2,
@@ -1106,7 +1137,11 @@ async def editar_cliente(id_cliente: int, data: ClienteUpdate, conn: asyncpg.Con
             WHERE id_cliente = $7
         """, data.nombre_negocio.strip(), data.telefono or None, data.direccion or None,
             data.contacto_principal or None, data.categoria, data.telegram_id or None, id_cliente)
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Cliente no encontrado")
         return {"status": "OK"}
+    except HTTPException:
+        raise
     except asyncpg.InvalidTextRepresentationError:
         raise HTTPException(status_code=422, detail="Categoría inválida")
     except Exception as e:
@@ -1328,18 +1363,18 @@ async def activar_toping(id_toping: int, conn: asyncpg.Connection = Depends(get_
 async def get_produccion_topings(fecha: date, conn: asyncpg.Connection = Depends(get_db)):
     """Detalle de topings por producto para una fecha de producción."""
     rows = await conn.fetch("""
-        SELECT dp.tipo_pan, dp.producto,
+        SELECT pd.tipo_pan, pd.producto,
                COALESCE(dp.toping, 'Sin toping') AS toping,
                SUM(dp.cantidad * COALESCE(pr.paquete_cantidad, 1)) AS total_unidades,
                c.nombre_negocio AS cliente
-        FROM detalle_pedidos dp
-        JOIN pedidos p ON p.id_pedido = dp.id_pedido
+        FROM produccion_diaria pd
+        JOIN pedidos p ON p.id_pedido = pd.id_pedido
         JOIN clientes c ON c.id_cliente = p.id_cliente
-        LEFT JOIN productos pr ON pr.nombre = dp.producto
-        WHERE p.fecha_produccion_requerida = $1
-          AND p.estado IN ('confirmado','entregado')
-        GROUP BY dp.tipo_pan, dp.producto, dp.toping, c.nombre_negocio
-        ORDER BY dp.tipo_pan, dp.producto, toping
+        JOIN detalle_pedidos dp ON dp.id_pedido = pd.id_pedido AND dp.producto = pd.producto
+        LEFT JOIN productos pr ON pr.nombre = pd.producto
+        WHERE pd.fecha_produccion_requerida = $1
+        GROUP BY pd.tipo_pan, pd.producto, dp.toping, c.nombre_negocio
+        ORDER BY pd.tipo_pan, pd.producto, toping
     """, fecha)
     return [dict(r) for r in rows]
 

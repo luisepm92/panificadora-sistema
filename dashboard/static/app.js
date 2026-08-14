@@ -64,6 +64,12 @@ function manana() {
 
 // ── Modales ───────────────────────────────────────────────────────────────────
 
+function _abrirVentana(ancho = 800, alto = 700) {
+    const win = window.open('', '_blank', `width=${ancho},height=${alto}`);
+    if (!win) { alert('El navegador bloqueó la ventana emergente. Permite popups para esta página e intenta de nuevo.'); return null; }
+    return win;
+}
+
 function cerrarModal(id) {
     const m = document.getElementById(id);
     if (m) { m.style.display = 'none'; m.classList.add('hidden'); }
@@ -151,7 +157,7 @@ async function cargarPedidos() {
 function abrirModalConfirmar(idPedido) {
     pedidoActivoId = idPedido;
     document.getElementById('fecha-produccion').value = hoy();
-    document.getElementById('fecha-despacho').value   = hoy();
+    document.getElementById('fecha-despacho').value   = manana();
     abrirModal('modal-confirmar');
 }
 
@@ -184,7 +190,8 @@ async function verDetalles(idPedido) {
                 <td>${esc(d.cantidad)}</td><td>${esc(d.tipo_unidad)}</td>
                 <td>${formatMonto(d.precio_unitario)}</td><td>${formatMonto(d.subtotal)}</td>
             </tr>`).join('');
-        const win = window.open('', '_blank', 'width=700,height=500');
+        const win = _abrirVentana(700, 500);
+        if (!win) return;
         win.document.write(`<html><head><title>Pedido ${esc(pedido.numero_recibo)}</title>
             <style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse}
             th,td{padding:10px;border:1px solid #ddd;text-align:left}thead{background:#667eea;color:white}</style>
@@ -567,7 +574,8 @@ function imprimirIngDetalle() {
     const titulo  = document.getElementById('ing-detalle-titulo').textContent;
     const panes   = document.getElementById('ing-detalle-panes').innerHTML;
     const filas   = document.getElementById('ing-detalle-body').innerHTML;
-    const ventana = window.open('', '_blank', 'width=520,height=700');
+    const ventana = _abrirVentana(520, 700);
+    if (!ventana) return;
     ventana.document.write(`<!DOCTYPE html><html><head>
         <meta charset="UTF-8">
         <title>${titulo}</title>
@@ -1115,11 +1123,8 @@ async function guardarIngrediente() {
     if (!nombre || isNaN(gramos) || gramos <= 0) {
         alert('Ingresa el nombre y los gramos del ingrediente.'); return;
     }
-    // Calcular ratio provisional con el total actual + nuevo ingrediente
-    const inputs     = document.querySelectorAll('#ingredientes-table tbody .ing-gramos');
-    const totalActual = Array.from(inputs).reduce((s, el) => s + (parseFloat(el.value) || 0), 0);
-    const nuevoTotal  = totalActual + gramos;
-    const ratio       = nuevoTotal > 0 ? gramos / nuevoTotal : 0;
+    // Ratio provisional = gramos / peso_masa_g actual; se recalcula al guardar toda la receta
+    const ratio = _recetaPesoMasaG > 0 ? gramos / _recetaPesoMasaG : 0;
     try {
         const res = await apiFetch(`${API}/api/recetas/${recetaActivaNombre}/ingredientes`, {
             method: 'POST',
@@ -1470,8 +1475,11 @@ async function confirmarPago() {
         cancelarFormPago();
 
         // Refrescar el modal con los datos actualizados
-        const nombre = document.getElementById('modal-pago-titulo').textContent.replace('Deudas — ', '');
-        if (_pagoIdClienteActivo) await abrirModalPago(_pagoIdClienteActivo, nombre);
+        if (_pagoIdClienteActivo) {
+            const titulo = document.getElementById('modal-pago-titulo').textContent;
+            const nombre = titulo.replace(/^Deudas\s*—\s*/, '');
+            await abrirModalPago(_pagoIdClienteActivo, nombre);
+        }
 
         // Refrescar tabla principal
         deudaPagina = 1;
@@ -1490,6 +1498,7 @@ async function abrirModalDeudaManual() {
     const select = document.getElementById('dm-cliente');
     try {
         const res = await apiFetch(`${API}/api/clientes`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         // /api/clientes devuelve array plano
         const clientes = Array.isArray(data) ? data : (data.items || []);
@@ -1537,6 +1546,12 @@ let _clienteSeleccionado    = null;
 function _mostrarPaso(id) {
     document.querySelectorAll('.pedido-paso').forEach(el => el.classList.add('hidden'));
     document.getElementById(id).classList.remove('hidden');
+}
+
+function _invalidarCatalogosPedido() {
+    _clientesCargados = false;
+    _clientesCatalogo = [];
+    _prodsCatalogo    = [];
 }
 
 async function _cargarClientesSelectPedido() {
@@ -1910,6 +1925,7 @@ async function guardarPedidoManual() {
         if (!res.ok) { const err = await res.json(); throw new Error(err.detail || `HTTP ${res.status}`); }
         document.getElementById('pedido-cli-buscar').disabled = false;
         cerrarModal('modal-pedido');
+        _invalidarCatalogosPedido();
         seccionCargada.delete('pedidos');
         cargarPedidos();
     } catch (e) { alert(`Error guardando pedido: ${e.message}`); }
@@ -1920,6 +1936,7 @@ async function guardarPedidoManual() {
 async function cargarTopings() {
     try {
         const res  = await apiFetch(`${API}/api/topings`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const rows = await res.json();
         const tbody = document.querySelector('#topings-table tbody');
         if (!rows.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">Sin topings registrados</td></tr>'; return; }
@@ -1959,16 +1976,22 @@ async function guardarNuevoToping() {
 
 async function eliminarToping(id) {
     if (!confirm('¿Desactivar este toping?')) return;
-    await apiFetch(`${API}/api/topings/${id}`, { method: 'DELETE' });
-    _topingsCatalogo = [];
-    cargarTopings();
+    try {
+        const res = await apiFetch(`${API}/api/topings/${id}`, { method: 'DELETE' });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || `HTTP ${res.status}`); }
+        _topingsCatalogo = [];
+        cargarTopings();
+    } catch (e) { alert('Error desactivando toping: ' + e.message); }
 }
 
 async function activarToping(id) {
     if (!confirm('¿Reactivar este toping?')) return;
-    await apiFetch(`${API}/api/topings/${id}/activar`, { method: 'PUT' });
-    _topingsCatalogo = [];
-    cargarTopings();
+    try {
+        const res = await apiFetch(`${API}/api/topings/${id}/activar`, { method: 'PUT' });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.detail || `HTTP ${res.status}`); }
+        _topingsCatalogo = [];
+        cargarTopings();
+    } catch (e) { alert('Error activando toping: ' + e.message); }
 }
 
 // ── Producción con topings ────────────────────────────────────────────────────
@@ -2002,7 +2025,8 @@ async function verTopingsProduccion(fecha) {
                 </table>
             </div>`).join('');
 
-        const win = window.open('', '_blank', 'width=700,height=600');
+        const win = _abrirVentana(700, 600);
+        if (!win) return;
         win.document.write(`<html><head><title>Topings ${esc(fecha)}</title>
             <style>body{font-family:sans-serif;padding:20px}table{border-collapse:collapse;width:100%}
             th,td{border:1px solid #ddd;padding:6px 10px}th{background:#f0f4ff}</style></head>
@@ -2046,7 +2070,8 @@ async function imprimirProduccionPorMasa(fecha) {
             </div>`;
         }).join('');
 
-        const win = window.open('', '_blank', 'width=800,height=700');
+        const win = _abrirVentana(800, 700);
+        if (!win) return;
         win.document.write(`<html><head><title>Producción por Masa ${esc(fecha)}</title>
             <style>body{font-family:sans-serif;padding:20px}th,td{border:1px solid #ddd;padding:5px 8px}th{background:#f0f4ff}@media print{.no-print{display:none}}</style></head>
             <body><h2>📦 Producción por Masa — ${esc(fecha)}</h2>${panHtml}
@@ -2062,14 +2087,12 @@ async function imprimirProduccionPorCliente(fecha) {
         const rows = await res.json();
         if (!rows.length) { alert('Sin producción para esta fecha.'); return; }
 
-        // Agrupar por cliente (un producto puede tener varios clientes)
+        // Agrupar por cliente: cada fila ya tiene un cliente individual
         const porCliente = {};
         rows.forEach(r => {
-            const clientes = (r.cliente || '').split(', ');
-            clientes.forEach(cli => {
-                if (!porCliente[cli]) porCliente[cli] = [];
-                porCliente[cli].push(r);
-            });
+            const cli = r.cliente || 'Sin cliente';
+            if (!porCliente[cli]) porCliente[cli] = [];
+            porCliente[cli].push(r);
         });
 
         const html = Object.entries(porCliente).sort().map(([cli, items]) => `
@@ -2086,7 +2109,8 @@ async function imprimirProduccionPorCliente(fecha) {
                 </table>
             </div>`).join('');
 
-        const win = window.open('', '_blank', 'width=800,height=700');
+        const win = _abrirVentana(800, 700);
+        if (!win) return;
         win.document.write(`<html><head><title>Producción por Cliente ${esc(fecha)}</title>
             <style>body{font-family:sans-serif;padding:20px}th,td{border:1px solid #ddd;padding:5px 8px}th{background:#f0f4ff}</style></head>
             <body><h2>👥 Producción por Cliente — ${esc(fecha)}</h2>${html}
