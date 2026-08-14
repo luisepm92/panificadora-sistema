@@ -2031,14 +2031,14 @@ async function imprimirProduccionPorMasa(fecha) {
         });
 
         const panHtml = Object.entries(porMasa).map(([masa, items]) => {
-            const totalUds = items.reduce((s, i) => s + Number(i.cantidad || 0), 0);
+            const totalUds = items.reduce((s, i) => s + Number(i.total_unidades || 0), 0);
             return `<div style="page-break-inside:avoid;margin-bottom:20px;border:1px solid #ddd;border-radius:8px;padding:14px">
                 <h3 style="margin:0 0 10px;color:#667eea">🍞 ${esc(masa)} — ${totalUds} uds</h3>
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr><th>Producto</th><th>Toping</th><th style="text-align:right">Paq</th><th style="text-align:right">Uds</th><th style="text-align:right">Peso(g)</th></tr></thead>
                     <tbody>${items.map(p => {
                         const paq = Number(p.paquete_cantidad) || 1;
-                        const uds = Number(p.cantidad) || 0;
+                        const uds = Number(p.total_unidades) || 0;
                         const paqCount = paq > 1 ? Math.round(uds / paq) : '—';
                         return `<tr><td>${esc(p.producto)}</td><td style="color:#667eea">${esc(p.topings || '—')}</td><td style="text-align:right">${paqCount}</td><td style="text-align:right">${uds}</td><td style="text-align:right">${esc(p.peso_g) || '—'}</td></tr>`;
                     }).join('')}</tbody>
