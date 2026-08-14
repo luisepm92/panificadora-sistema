@@ -473,23 +473,44 @@ async def get_produccion_detalle(fecha: date, conn: asyncpg.Connection = Depends
     """Tabla 1A: detalle por tipo_masa + producto + cliente."""
     try:
         rows = await conn.fetch("""
+            WITH base AS (
+                SELECT
+                    pd.tipo_pan                                        AS tipo_masa,
+                    pd.producto,
+                    COALESCE(pr.peso_g, pd.peso_g)                    AS peso_g,
+                    pd.total_unidades,
+                    COALESCE(pr.paquete_cantidad, 1)                   AS paquete_cantidad,
+                    c.nombre_negocio                                   AS cliente
+                FROM produccion_diaria pd
+                JOIN pedidos  p ON p.id_pedido  = pd.id_pedido
+                JOIN clientes c ON c.id_cliente = p.id_cliente
+                LEFT JOIN productos pr ON pr.nombre = pd.producto
+                WHERE pd.fecha_produccion_requerida = $1
+            ),
+            topings AS (
+                SELECT
+                    pd.tipo_pan, pd.producto, c.nombre_negocio AS cliente,
+                    STRING_AGG(DISTINCT COALESCE(dp.toping, 'Sin toping'), ' / ') AS topings
+                FROM produccion_diaria pd
+                JOIN pedidos  p ON p.id_pedido  = pd.id_pedido
+                JOIN clientes c ON c.id_cliente = p.id_cliente
+                LEFT JOIN detalle_pedidos dp ON dp.id_pedido = pd.id_pedido
+                    AND dp.producto = pd.producto
+                WHERE pd.fecha_produccion_requerida = $1
+                GROUP BY pd.tipo_pan, pd.producto, c.nombre_negocio
+            )
             SELECT
-                pd.tipo_pan                                                AS tipo_masa,
-                pd.producto,
-                COALESCE(MAX(pr.peso_g), MAX(pd.peso_g))                  AS peso_g,
-                SUM(pd.total_unidades)                                     AS total_unidades,
-                COALESCE(MAX(pr.paquete_cantidad), 1)                      AS paquete_cantidad,
-                c.nombre_negocio                                           AS cliente,
-                STRING_AGG(DISTINCT COALESCE(dp.toping, 'Sin toping'), ' / ') AS topings
-            FROM produccion_diaria pd
-            JOIN pedidos  p ON p.id_pedido  = pd.id_pedido
-            JOIN clientes c ON c.id_cliente = p.id_cliente
-            LEFT JOIN productos pr ON pr.nombre = pd.producto
-            LEFT JOIN detalle_pedidos dp ON dp.id_pedido = pd.id_pedido
-                AND dp.producto = pd.producto AND dp.peso_g = pd.peso_g
-            WHERE pd.fecha_produccion_requerida = $1
-            GROUP BY pd.tipo_pan, pd.producto, c.nombre_negocio
-            ORDER BY pd.tipo_pan, pd.producto, c.nombre_negocio
+                b.tipo_masa, b.producto,
+                MAX(b.peso_g)          AS peso_g,
+                SUM(b.total_unidades)  AS total_unidades,
+                MAX(b.paquete_cantidad) AS paquete_cantidad,
+                b.cliente,
+                t.topings
+            FROM base b
+            LEFT JOIN topings t ON t.tipo_pan = b.tipo_masa
+                AND t.producto = b.producto AND t.cliente = b.cliente
+            GROUP BY b.tipo_masa, b.producto, b.cliente, t.topings
+            ORDER BY b.tipo_masa, b.producto, b.cliente
         """, fecha)
         return [dict(r) for r in rows]
     except Exception as e:
