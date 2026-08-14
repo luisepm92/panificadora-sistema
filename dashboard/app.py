@@ -914,13 +914,15 @@ def _generar_pdf(pedido: dict, cliente: dict, items: list) -> bytes:
         story.append(Paragraph(f"Tel: {cliente['telefono']}", st_label))
     story.append(Spacer(1, 4*mm))
 
+    st_celda = ParagraphStyle("celda", parent=styles["Normal"], fontSize=8, leading=10)
     encabezado = [["Producto", "Peso", "Cant.", "P.Unit.", "Total"]]
     filas = [[
-        item["producto"], f"{item['peso_g']}g", str(item["cantidad"]),
+        Paragraph(item["producto"], st_celda),
+        f"{item['peso_g']}g", str(item["cantidad"]),
         f"${float(item['precio_unitario']):.2f}", f"${float(item['subtotal']):.2f}",
     ] for item in items]
 
-    tabla = Table(encabezado + filas, colWidths=[50*mm, 18*mm, 15*mm, 20*mm, 20*mm])
+    tabla = Table(encabezado + filas, colWidths=[58*mm, 16*mm, 14*mm, 20*mm, 20*mm])
     tabla.setStyle(TableStyle([
         ("BACKGROUND",     (0, 0), (-1, 0),  colors.HexColor("#2C3E50")),
         ("TEXTCOLOR",      (0, 0), (-1, 0),  colors.white),
