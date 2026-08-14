@@ -896,7 +896,7 @@ def _generar_pdf(pedido: dict, cliente: dict, items: list) -> bytes:
 
     story = []
     story.append(Paragraph("Pan Mistico", st_empresa))
-    story.append(Paragraph("Pan fresco cada día", st_slogan))
+    story.append(Paragraph("Conectando sabores", st_slogan))
     story.append(linea)
     story.append(Spacer(1, 3*mm))
 
