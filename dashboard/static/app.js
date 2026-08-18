@@ -2046,25 +2046,36 @@ async function imprimirProduccionPorMasa(fecha) {
         const panes = resPan.ok ? await resPan.json() : [];
         if (!panes.length) { alert('Sin producción para esta fecha.'); return; }
 
-        // Agrupar panes por tipo_masa
+        // Agrupar por tipo_masa, luego por (producto + toping) sumando unidades
         const porMasa = {};
         panes.forEach(p => {
             const m = p.tipo_masa || 'Sin masa';
-            if (!porMasa[m]) porMasa[m] = [];
-            porMasa[m].push(p);
+            if (!porMasa[m]) porMasa[m] = {};
+            const key = `${p.producto}||${p.topings || '—'}`;
+            if (!porMasa[m][key]) {
+                porMasa[m][key] = {
+                    producto: p.producto,
+                    topings: p.topings || '—',
+                    peso_g: p.peso_g,
+                    paquete_cantidad: Number(p.paquete_cantidad) || 1,
+                    total_unidades: 0,
+                };
+            }
+            porMasa[m][key].total_unidades += Number(p.total_unidades || 0);
         });
 
-        const panHtml = Object.entries(porMasa).map(([masa, items]) => {
-            const totalUds = items.reduce((s, i) => s + Number(i.total_unidades || 0), 0);
+        const panHtml = Object.entries(porMasa).map(([masa, grupo]) => {
+            const items = Object.values(grupo);
+            const totalUds = items.reduce((s, i) => s + i.total_unidades, 0);
             return `<div style="page-break-inside:avoid;margin-bottom:20px;border:1px solid #ddd;border-radius:8px;padding:14px">
                 <h3 style="margin:0 0 10px;color:#667eea">🍞 ${esc(masa)} — ${totalUds} uds</h3>
                 <table style="width:100%;border-collapse:collapse;font-size:13px">
                     <thead><tr><th>Producto</th><th>Toping</th><th style="text-align:right">Paq</th><th style="text-align:right">Uds</th><th style="text-align:right">Peso(g)</th></tr></thead>
                     <tbody>${items.map(p => {
-                        const paq = Number(p.paquete_cantidad) || 1;
-                        const uds = Number(p.total_unidades) || 0;
+                        const paq = p.paquete_cantidad;
+                        const uds = p.total_unidades;
                         const paqCount = paq > 1 ? Math.round(uds / paq) : '—';
-                        return `<tr><td>${esc(p.producto)}</td><td style="color:#667eea">${esc(p.topings || '—')}</td><td style="text-align:right">${paqCount}</td><td style="text-align:right">${uds}</td><td style="text-align:right">${esc(p.peso_g) || '—'}</td></tr>`;
+                        return `<tr><td>${esc(p.producto)}</td><td style="color:#667eea">${esc(p.topings)}</td><td style="text-align:right">${paqCount}</td><td style="text-align:right">${uds}</td><td style="text-align:right">${esc(p.peso_g) || '—'}</td></tr>`;
                     }).join('')}</tbody>
                 </table>
             </div>`;
